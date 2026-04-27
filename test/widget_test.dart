@@ -14,6 +14,7 @@ import 'package:todolife/app_state.dart';
 import 'package:todolife/main.dart';
 import 'package:todolife/models/calendar_event.dart';
 import 'package:todolife/services/user_storage.dart';
+import 'package:todolife/ui/screens/finance/salary_split_screen.dart';
 import 'package:todolife/ui/screens/settings/settings_screen.dart';
 
 void main() {
@@ -48,7 +49,7 @@ void main() {
     // Salary split.
     await tester.tap(find.text('Финансы'));
     await tester.pumpAndSettle();
-    expect(find.text('Распределение ЗП'), findsOneWidget);
+    expect(find.text('Средства (ЗП)'), findsOneWidget);
 
     // Calendar.
     await tester.tap(find.text('Календарь'));
@@ -86,11 +87,19 @@ void main() {
 
     await tester.tap(find.text('Финансы'));
     await tester.pumpAndSettle();
-    expect(find.text('Распределение ЗП'), findsOneWidget);
+    expect(find.text('Средства (ЗП)'), findsOneWidget);
+
+    // TabBarView adds a horizontal [Scrollable]; the salary list is vertical only.
+    final financeScroll = find.descendant(
+      of: find.byKey(const PageStorageKey('salary_split_list')),
+      matching: find.byWidgetPredicate(
+        (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+      ),
+    );
 
     // Enter salary (editor becomes available immediately).
     final salaryField = find.byWidgetPredicate(
-      (w) => w is TextField && w.decoration?.labelText == 'Зарплата (ЗП)',
+      (w) => w is TextField && w.decoration?.labelText == 'Средства (ЗП)',
     );
     await tester.enterText(salaryField, '100000');
     await tester.pumpAndSettle();
@@ -103,12 +112,16 @@ void main() {
     expect(find.textContaining('Подстановка: 10%'), findsWidgets);
 
     // Scroll down to the save button.
-    await tester.scrollUntilVisible(
-      find.text('Сохранить'),
-      300,
-      scrollable: find.byType(Scrollable).first,
+    final saveButton = find.descendant(
+      of: find.byType(SalarySplitScreen),
+      matching: find.text('Сохранить'),
     );
-    await tester.tap(find.text('Сохранить'));
+    await tester.scrollUntilVisible(
+      saveButton,
+      500,
+      scrollable: financeScroll,
+    );
+    await tester.tap(saveButton);
     await tester.pumpAndSettle();
     expect(find.text('Сохраненные бюджеты'), findsOneWidget);
 
@@ -116,7 +129,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.byTooltip('Удалить'),
       200,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: financeScroll,
     );
     await tester.tap(find.byTooltip('Удалить').first);
     await tester.pumpAndSettle();
@@ -127,7 +140,7 @@ void main() {
     await tester.scrollUntilVisible(
       find.text('Сбросить значения'),
       -300,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: financeScroll,
     );
     await tester.tap(find.text('Сбросить значения'));
     await tester.pumpAndSettle();

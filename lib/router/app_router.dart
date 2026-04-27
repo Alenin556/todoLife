@@ -4,8 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../app_state.dart';
 import '../ui/scope/app_state_scope.dart';
 import '../ui/shell/app_scaffold.dart';
-import '../ui/screens/finance/deposit_calculator_screen.dart';
-import '../ui/screens/finance/salary_split_screen.dart';
+import '../ui/screens/finance/finance_root_screen.dart';
 import '../ui/screens/calendar/calendar_screen.dart';
 import '../ui/screens/home/home_screen.dart';
 import '../ui/screens/quotes_home_screen.dart';
@@ -20,6 +19,14 @@ class AppRouter {
 
   late final GoRouter router = GoRouter(
     routes: [
+      GoRoute(
+        path: '/finance/salary',
+        redirect: (context, state) => '/finance',
+      ),
+      GoRoute(
+        path: '/finance/deposit',
+        redirect: (context, state) => '/finance',
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return AppStateScope(
@@ -64,12 +71,8 @@ class AppRouter {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/finance/salary',
-                builder: (context, state) => const SalarySplitScreen(),
-              ),
-              GoRoute(
-                path: '/finance/deposit',
-                builder: (context, state) => const DepositCalculatorScreen(),
+                path: '/finance',
+                builder: (context, state) => const FinanceRootScreen(),
               ),
             ],
           ),

@@ -127,13 +127,9 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
 
     return SafeArea(
       child: ListView(
+        key: const PageStorageKey('salary_split_list'),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
-          Text(
-            'Распределение ЗП',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 12),
           TextField(
             controller: salaryCtrl,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -144,7 +140,7 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
               ThousandsSeparatorInputFormatter(),
             ],
             decoration: const InputDecoration(
-              labelText: 'Зарплата (ЗП)',
+              labelText: 'Средства (ЗП)',
               border: OutlineInputBorder(),
             ),
             onChanged: (s) async {
@@ -157,7 +153,7 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
           const SizedBox(height: 8),
           if (draft.salary <= 0) ...[
             Text(
-              'Введите зарплату, чтобы начать распределение.',
+              'Введите сумму, чтобы начать распределение.',
               style: Theme.of(context).textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
