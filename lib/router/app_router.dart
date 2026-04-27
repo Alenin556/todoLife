@@ -7,6 +7,7 @@ import '../ui/shell/app_scaffold.dart';
 import '../ui/screens/finance/deposit_calculator_screen.dart';
 import '../ui/screens/finance/salary_split_screen.dart';
 import '../ui/screens/calendar/calendar_screen.dart';
+import '../ui/screens/home/home_screen.dart';
 import '../ui/screens/quotes_home_screen.dart';
 import '../ui/screens/tasks/task_edit_screen.dart';
 import '../ui/screens/tasks/task_list_screen.dart';
@@ -32,6 +33,10 @@ class AppRouter {
         routes: [
           GoRoute(
             path: '/',
+            builder: (context, state) => const HomeScreen(),
+          ),
+          GoRoute(
+            path: '/motivation',
             builder: (context, state) => const QuotesHomeScreen(),
           ),
           GoRoute(

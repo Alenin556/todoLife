@@ -31,6 +31,14 @@ class AppScaffold extends StatelessWidget {
                 ),
               ),
               _NavTile(
+                tileKey: const ValueKey('nav_home'),
+                selected: _isSelected('/'),
+                icon: Icons.home_outlined,
+                title: 'Главная',
+                onTap: () => _go(context, '/'),
+              ),
+              const Divider(),
+              _NavTile(
                 tileKey: const ValueKey('nav_daily'),
                 selected: _isSelected('/tasks/daily'),
                 icon: Icons.today_outlined,
@@ -68,10 +76,10 @@ class AppScaffold extends StatelessWidget {
               const Divider(),
               _NavTile(
                 tileKey: const ValueKey('nav_quotes'),
-                selected: _isSelected('/'),
+                selected: _isSelected('/motivation'),
                 icon: Icons.auto_awesome_outlined,
                 title: 'Мотивация',
-                onTap: () => _go(context, '/'),
+                onTap: () => _go(context, '/motivation'),
               ),
               const Divider(),
               Padding(

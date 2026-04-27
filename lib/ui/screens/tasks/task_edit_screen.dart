@@ -85,6 +85,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                     final initial = _deadline ?? now;
                     final picked = await showDatePicker(
                       context: context,
+                      locale: const Locale('ru', 'RU'),
                       initialDate: initial,
                       firstDate: DateTime(now.year - 1),
                       lastDate: DateTime(now.year + 10),
@@ -95,7 +96,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                   icon: const Icon(Icons.event_outlined),
                   label: Text(
                     _deadline == null
-                        ? 'Добавить дедлайн (необязательно)'
+                        ? 'Добавить дедлайн'
                         : 'Дедлайн: ${DateFormat('d MMMM yyyy', 'ru_RU').format(_deadline!)}',
                   ),
                 ),
