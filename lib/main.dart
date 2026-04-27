@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -17,7 +18,7 @@ Future<void> main() async {
   await initializeDateFormatting('ru');
   await initializeDateFormatting('ru_RU');
   Intl.defaultLocale = 'ru_RU';
-  if (Platform.isWindows) {
+  if (!kIsWeb && Platform.isWindows) {
     SharedPreferencesWindows.registerWith();
   }
   final storage = await UserStorage.open();
