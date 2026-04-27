@@ -162,23 +162,6 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
               textAlign: TextAlign.center,
             ),
           ] else ...[
-            SegmentedButton<SalarySplitMode>(
-              segments: const [
-                ButtonSegment(
-                  value: SalarySplitMode.percent,
-                  label: Text('%'),
-                  icon: Icon(Icons.percent),
-                ),
-                ButtonSegment(
-                  value: SalarySplitMode.amount,
-                  label: Text('Суммы'),
-                  icon: Icon(Icons.payments_outlined),
-                ),
-              ],
-              selected: {draft.mode},
-              onSelectionChanged: (s) => appState.setSalarySplitMode(s.first),
-            ),
-            const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerLeft,
               child: OutlinedButton.icon(
