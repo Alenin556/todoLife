@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'dart:math';
+
 import '../../../models/calendar_event.dart';
 import '../../scope/app_state_scope.dart';
 
@@ -311,9 +313,11 @@ class _CalendarEventEditScreenState extends State<CalendarEventEditScreen> {
     final hours = List<int>.generate(12, (i) => i + 1); // 1..12
     final minutes = List<int>.generate(12, (i) => i * 5); // 0..55
 
-    final hCtrl = FixedExtentScrollController(initialItem: hours.indexOf(hour12));
-    final mCtrl =
-        FixedExtentScrollController(initialItem: minutes.indexOf(minute));
+    var hourIndex = max(0, hours.indexOf(hour12));
+    var minuteIndex = max(0, minutes.indexOf(minute));
+
+    final hCtrl = FixedExtentScrollController(initialItem: hourIndex);
+    final mCtrl = FixedExtentScrollController(initialItem: minuteIndex);
 
     return showDialog<TimeOfDay>(
       context: context,
@@ -322,8 +326,8 @@ class _CalendarEventEditScreenState extends State<CalendarEventEditScreen> {
         content: StatefulBuilder(
           builder: (context, setLocal) {
             TimeOfDay current() {
-              final h12 = hours[hCtrl.selectedItem];
-              final mm = minutes[mCtrl.selectedItem];
+              final h12 = hours[hourIndex];
+              final mm = minutes[minuteIndex];
               var h24 = h12 % 12;
               if (isPm) h24 += 12;
               return TimeOfDay(hour: h24, minute: mm);
@@ -352,8 +356,9 @@ class _CalendarEventEditScreenState extends State<CalendarEventEditScreen> {
                             controller: hCtrl,
                             itemExtent: 36,
                             physics: const FixedExtentScrollPhysics(),
-                            onSelectedItemChanged: (_) =>
-                                setLocal(() {/* rebuild */}),
+                            onSelectedItemChanged: (i) => setLocal(() {
+                              hourIndex = i;
+                            }),
                             childDelegate: ListWheelChildBuilderDelegate(
                               builder: (context, index) {
                                 if (index < 0 || index >= hours.length) return null;
@@ -376,8 +381,9 @@ class _CalendarEventEditScreenState extends State<CalendarEventEditScreen> {
                             controller: mCtrl,
                             itemExtent: 36,
                             physics: const FixedExtentScrollPhysics(),
-                            onSelectedItemChanged: (_) =>
-                                setLocal(() {/* rebuild */}),
+                            onSelectedItemChanged: (i) => setLocal(() {
+                              minuteIndex = i;
+                            }),
                             childDelegate: ListWheelChildBuilderDelegate(
                               builder: (context, index) {
                                 if (index < 0 || index >= minutes.length) return null;
@@ -422,8 +428,8 @@ class _CalendarEventEditScreenState extends State<CalendarEventEditScreen> {
           ),
           FilledButton(
             onPressed: () {
-              final h12 = hours[hCtrl.selectedItem];
-              final mm = minutes[mCtrl.selectedItem];
+              final h12 = hours[hourIndex];
+              final mm = minutes[minuteIndex];
               var h24 = h12 % 12;
               if (isPm) h24 += 12;
               Navigator.of(context).pop(TimeOfDay(hour: h24, minute: mm));
