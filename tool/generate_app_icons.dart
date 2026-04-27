@@ -3,36 +3,69 @@ import 'dart:math';
 
 import 'package:image/image.dart' as img;
 
-class _ThemeSpec {
-  const _ThemeSpec({
-    required this.name,
-    required this.bgHex,
-    required this.strokeHex,
-  });
-
-  final String name;
-  final String bgHex;
-  final String strokeHex;
+int _luma(img.Color c) {
+  // ITU-R BT.601
+  final r = c.r.toInt();
+  final g = c.g.toInt();
+  final b = c.b.toInt();
+  return (0.299 * r + 0.587 * g + 0.114 * b).round();
 }
 
-img.Color _c(String hex) => img.ColorUint8.rgba(
-      (int.parse(hex.substring(1, 3), radix: 16)),
-      (int.parse(hex.substring(3, 5), radix: 16)),
-      (int.parse(hex.substring(5, 7), radix: 16)),
-      255,
-    );
-
-void _drawCircleStroke(img.Image im, int cx, int cy, int r, int stroke, img.Color color) {
-  final half = max(1, stroke ~/ 2);
-  for (int t = -half; t <= half; t++) {
-    img.drawCircle(im, x: cx, y: cy, radius: r + t, color: color, antialias: true);
+({int x, int y, int size}) _autoCropSquare(img.Image src) {
+  // Find the "dark content" area and crop a square around it.
+  // Works well for the engraving eye reference where background is lighter.
+  final step = max(1, (min(src.width, src.height) / 400).round());
+  final lumSamples = <int>[];
+  for (int y = 0; y < src.height; y += step) {
+    for (int x = 0; x < src.width; x += step) {
+      lumSamples.add(_luma(src.getPixel(x, y)));
+    }
   }
+  lumSamples.sort();
+  final p10 = lumSamples[(lumSamples.length * 0.10).floor().clamp(0, lumSamples.length - 1)];
+  final threshold = min(255, p10 + 18);
+
+  int minX = src.width, minY = src.height, maxX = -1, maxY = -1;
+  for (int y = 0; y < src.height; y += step) {
+    for (int x = 0; x < src.width; x += step) {
+      final lum = _luma(src.getPixel(x, y));
+      if (lum <= threshold) {
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+
+  if (maxX < 0 || maxY < 0) {
+    final s = min(src.width, src.height);
+    return (x: ((src.width - s) / 2).round(), y: ((src.height - s) / 2).round(), size: s);
+  }
+
+  // Expand box + make it square.
+  final boxW = maxX - minX;
+  final boxH = maxY - minY;
+  final boxSize = max(boxW, boxH);
+  final pad = (boxSize * 0.25).round();
+  final cx = (minX + maxX) ~/ 2;
+  final cy = (minY + maxY) ~/ 2;
+  var size = boxSize + pad * 2;
+  size = size.clamp(1, max(src.width, src.height));
+  var x0 = cx - size ~/ 2;
+  var y0 = cy - size ~/ 2;
+  x0 = x0.clamp(0, src.width - 1);
+  y0 = y0.clamp(0, src.height - 1);
+  if (x0 + size > src.width) x0 = max(0, src.width - size);
+  if (y0 + size > src.height) y0 = max(0, src.height - size);
+  size = min(size, min(src.width - x0, src.height - y0));
+
+  return (x: x0, y: y0, size: size);
 }
 
 img.Image _renderIcon({
   required int size,
-  required img.Color bg,
-  required img.Color stroke,
+  required img.Image eyeCrop,
 }) {
   final im = img.Image(width: size, height: size, numChannels: 4);
 
@@ -44,64 +77,18 @@ img.Image _renderIcon({
     y2: size - 1,
     color: img.ColorUint8.rgba(0, 0, 0, 0),
   );
-  // Only the picture: centered eye on transparent background.
-  final cx = (size * 0.5).round();
-  final cy = (size * 0.5).round();
-  final strokeW = max(2, (size * 0.06).round()); // readable at small sizes
 
-  // Eye mark (centered)
-  final eyeW = (size * 0.68).round();
-  final eyeH = (size * 0.34).round();
-  final steps = 48;
-
-  List<Point<int>> makeEyePoints(bool top) {
-    final pts = <Point<int>>[];
-    for (int i = 0; i <= steps; i++) {
-      final t = i / steps; // 0..1
-      final x = (t * 2 - 1); // -1..1
-      // Smooth arc: y = sin(pi*(1-|x|)) gives 0 at edges, 1 at center.
-      final k = sin(pi * (1 - x.abs()));
-      final y = (top ? -1 : 1) * k;
-      final px = cx + (x * (eyeW / 2)).round();
-      final py = cy + (y * (eyeH / 2)).round();
-      pts.add(Point(px, py));
-    }
-    return pts;
-  }
-
-  final topPts = makeEyePoints(true);
-  final bottomPts = makeEyePoints(false);
-
-  void drawPolyline(List<Point<int>> pts) {
-    for (int i = 0; i < pts.length - 1; i++) {
-      img.drawLine(
-        im,
-        x1: pts[i].x,
-        y1: pts[i].y,
-        x2: pts[i + 1].x,
-        y2: pts[i + 1].y,
-        color: stroke,
-        antialias: true,
-        thickness: max(2, (strokeW * 0.40).round()),
-      );
-    }
-  }
-
-  drawPolyline(topPts);
-  drawPolyline(bottomPts.reversed.toList(growable: false));
-
-  // Iris + pupil (still part of the picture)
-  final irisR = (size * 0.075).round();
-  final pupilR = (size * 0.04).round();
-  img.drawCircle(im, x: cx, y: cy, radius: irisR, color: stroke, antialias: true);
-  img.drawCircle(
-    im,
-    x: cx,
-    y: cy,
-    radius: pupilR,
-    color: img.ColorUint8.rgba(0, 0, 0, 0),
-    antialias: true,
+  // Place the cropped eye image, centered, with padding so it doesn't touch edges.
+  final target = (size * 0.86).round();
+  final resized = img.copyResize(
+    eyeCrop,
+    width: target,
+    height: target,
+    interpolation: img.Interpolation.cubic,
   );
+  final dx = ((size - resized.width) / 2).round();
+  final dy = ((size - resized.height) / 2).round();
+  img.compositeImage(im, resized, dstX: dx, dstY: dy);
 
   return im;
 }
@@ -121,11 +108,20 @@ Future<void> _writePng(String path, img.Image image) async {
 Future<void> main(List<String> args) async {
   final root = Directory.current.path;
 
-  final themes = const [
-    // Background is transparent; stroke controls eye color.
-    _ThemeSpec(name: 'light', bgHex: '#000000', strokeHex: '#111111'),
-    _ThemeSpec(name: 'dark', bgHex: '#000000', strokeHex: '#F2F2F2'),
-  ];
+  final eyePath = '$root/assets/icons/eye_reference.png';
+  final eyeBytes = await File(eyePath).readAsBytes();
+  final decoded = img.decodeImage(eyeBytes);
+  if (decoded == null) {
+    throw StateError('Failed to decode eye reference image at $eyePath');
+  }
+  final crop = _autoCropSquare(decoded);
+  final eyeCrop = img.copyCrop(
+    decoded,
+    x: crop.x,
+    y: crop.y,
+    width: crop.size,
+    height: crop.size,
+  );
 
   final standardSizes = const [48, 72, 96, 144, 192, 512];
 
@@ -153,32 +149,26 @@ Future<void> main(List<String> args) async {
   await _ensureDir(outSvg);
   await _ensureDir(outPng);
 
-  // Export standard PNG sizes for both themes.
-  for (final t in themes) {
-    final themeDir = '$outPng/${t.name}';
-    await _ensureDir(themeDir);
-    for (final s in standardSizes) {
-      final im = _renderIcon(size: s, bg: _c(t.bgHex), stroke: _c(t.strokeHex));
-      await _writePng('$themeDir/todolife_${t.name}_$s.png', im);
-    }
-    // Store also 1024 for marketing / master PNG.
-    final im1024 = _renderIcon(size: 1024, bg: _c(t.bgHex), stroke: _c(t.strokeHex));
-    await _writePng('$themeDir/todolife_${t.name}_1024.png', im1024);
+  // Export standard PNG sizes + 1024 master.
+  for (final s in standardSizes) {
+    final im = _renderIcon(size: s, eyeCrop: eyeCrop);
+    await _writePng('$outPng/todolife_$s.png', im);
   }
+  final im1024 = _renderIcon(size: 1024, eyeCrop: eyeCrop);
+  await _writePng('$outPng/todolife_1024.png', im1024);
 
-  // iOS: write AppIcon files (use light theme as default launcher).
+  // iOS: write AppIcon files.
   final iosDir = '$root/ios/Runner/Assets.xcassets/AppIcon.appiconset';
   await _ensureDir(iosDir);
   for (final entry in iosPxSizes.entries) {
     final im = _renderIcon(
       size: entry.value,
-      bg: _c(themes.first.bgHex),
-      stroke: _c(themes.first.strokeHex),
+      eyeCrop: eyeCrop,
     );
     await _writePng('$iosDir/${entry.key}', im);
   }
 
-  // Android: create mipmap PNGs (use light theme as default launcher).
+  // Android: create mipmap PNGs.
   // Typical launcher sizes:
   // mdpi 48, hdpi 72, xhdpi 96, xxhdpi 144, xxxhdpi 192.
   final androidRes = '$root/android/app/src/main/res';
@@ -192,11 +182,11 @@ Future<void> main(List<String> args) async {
   for (final m in mipmaps.entries) {
     final dir = '$androidRes/${m.key}';
     await _ensureDir(dir);
-    final im = _renderIcon(size: m.value, bg: _c(themes.first.bgHex), stroke: _c(themes.first.strokeHex));
+    final im = _renderIcon(size: m.value, eyeCrop: eyeCrop);
     await _writePng('$dir/ic_launcher.png', im);
     await _writePng('$dir/ic_launcher_round.png', im);
   }
 
-  stdout.writeln('Generated icons into assets/icons/png, iOS AppIcon, and Android mipmaps.');
+  stdout.writeln('Generated icons from $eyePath into assets/icons/png, iOS AppIcon, and Android mipmaps.');
 }
 
