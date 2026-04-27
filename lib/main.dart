@@ -24,7 +24,8 @@ Future<void> main() async {
   }
   final storage = await UserStorage.open();
   NotificationsService? notifications;
-  if (!kIsWeb) {
+  // Notifications are implemented only for Android (per spec).
+  if (!kIsWeb && Platform.isAndroid) {
     notifications = await NotificationsService.createAndInit();
   }
   final appState = AppState(storage, notifications: notifications);
