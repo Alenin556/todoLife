@@ -5,6 +5,7 @@ import 'dart:math';
 
 import '../../../models/calendar_event.dart';
 import '../../scope/app_state_scope.dart';
+import '../../widgets/realistic_time_picker_dialog.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -304,140 +305,10 @@ class _CalendarEventEditScreenState extends State<CalendarEventEditScreen> {
 
   Future<TimeOfDay?> _pickRealisticTime(TimeOfDay? initial) async {
     final init = initial ?? TimeOfDay.now();
-    var isPm = init.hour >= 12;
-    var hour12 = init.hour % 12;
-    if (hour12 == 0) hour12 = 12;
-    var minute = (init.minute / 5).round() * 5;
-    if (minute == 60) minute = 55;
-
-    final hours = List<int>.generate(12, (i) => i + 1); // 1..12
-    final minutes = List<int>.generate(12, (i) => i * 5); // 0..55
-
-    var hourIndex = max(0, hours.indexOf(hour12));
-    var minuteIndex = max(0, minutes.indexOf(minute));
-
-    final hCtrl = FixedExtentScrollController(initialItem: hourIndex);
-    final mCtrl = FixedExtentScrollController(initialItem: minuteIndex);
-
-    return showDialog<TimeOfDay>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Выберите время'),
-        content: StatefulBuilder(
-          builder: (context, setLocal) {
-            TimeOfDay current() {
-              final h12 = hours[hourIndex];
-              final mm = minutes[minuteIndex];
-              var h24 = h12 % 12;
-              if (isPm) h24 += 12;
-              return TimeOfDay(hour: h24, minute: mm);
-            }
-
-            final v = current();
-            final preview =
-                '${v.hour.toString().padLeft(2, '0')}:${v.minute.toString().padLeft(2, '0')}';
-
-            return SizedBox(
-              width: 320,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    preview,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SizedBox(
-                          height: 160,
-                          child: ListWheelScrollView.useDelegate(
-                            controller: hCtrl,
-                            itemExtent: 36,
-                            physics: const FixedExtentScrollPhysics(),
-                            onSelectedItemChanged: (i) => setLocal(() {
-                              hourIndex = i;
-                            }),
-                            childDelegate: ListWheelChildBuilderDelegate(
-                              builder: (context, index) {
-                                if (index < 0 || index >= hours.length) return null;
-                                return Center(
-                                  child: Text(
-                                    hours[index].toString().padLeft(2, '0'),
-                                    style: Theme.of(context).textTheme.titleLarge,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: SizedBox(
-                          height: 160,
-                          child: ListWheelScrollView.useDelegate(
-                            controller: mCtrl,
-                            itemExtent: 36,
-                            physics: const FixedExtentScrollPhysics(),
-                            onSelectedItemChanged: (i) => setLocal(() {
-                              minuteIndex = i;
-                            }),
-                            childDelegate: ListWheelChildBuilderDelegate(
-                              builder: (context, index) {
-                                if (index < 0 || index >= minutes.length) return null;
-                                return Center(
-                                  child: Text(
-                                    minutes[index].toString().padLeft(2, '0'),
-                                    style: Theme.of(context).textTheme.titleLarge,
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        children: [
-                          ChoiceChip(
-                            label: const Text('AM'),
-                            selected: !isPm,
-                            onSelected: (_) => setLocal(() => isPm = false),
-                          ),
-                          const SizedBox(height: 8),
-                          ChoiceChip(
-                            label: const Text('PM'),
-                            selected: isPm,
-                            onSelected: (_) => setLocal(() => isPm = true),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final h12 = hours[hourIndex];
-              final mm = minutes[minuteIndex];
-              var h24 = h12 % 12;
-              if (isPm) h24 += 12;
-              Navigator.of(context).pop(TimeOfDay(hour: h24, minute: mm));
-            },
-            child: const Text('ОК'),
-          ),
-        ],
-      ),
+    return RealisticTimePickerDialog.show(
+      context,
+      initial: init,
+      minuteStep: 5,
     );
   }
 
