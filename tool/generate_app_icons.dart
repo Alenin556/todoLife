@@ -36,9 +36,6 @@ img.Image _renderIcon({
 }) {
   final im = img.Image(width: size, height: size, numChannels: 4);
 
-  // Background squircle
-  final pad = (size * 0.0625).round(); // ~64 at 1024
-  final radius = (size * 0.215).round(); // ~220 at 1024
   img.fillRect(
     im,
     x1: 0,
@@ -47,26 +44,14 @@ img.Image _renderIcon({
     y2: size - 1,
     color: img.ColorUint8.rgba(0, 0, 0, 0),
   );
-  img.fillRect(
-    im,
-    x1: pad,
-    y1: pad,
-    x2: size - pad - 1,
-    y2: size - pad - 1,
-    radius: radius,
-    color: bg,
-  );
-
-  // Coin stroke
+  // Only the picture: centered eye on transparent background.
   final cx = (size * 0.5).round();
-  final cy = (size * 0.535).round(); // slightly lower, matches mock
-  final r = (size * 0.254).round(); // ~260 at 1024
-  final strokeW = max(2, (size * 0.043).round()); // ~44 at 1024
-  _drawCircleStroke(im, cx, cy, r, strokeW, stroke);
+  final cy = (size * 0.5).round();
+  final strokeW = max(2, (size * 0.06).round()); // readable at small sizes
 
   // Eye mark (centered)
-  final eyeW = (r * 1.45).round();
-  final eyeH = (r * 0.72).round();
+  final eyeW = (size * 0.68).round();
+  final eyeH = (size * 0.34).round();
   final steps = 48;
 
   List<Point<int>> makeEyePoints(bool top) {
@@ -97,7 +82,7 @@ img.Image _renderIcon({
         y2: pts[i + 1].y,
         color: stroke,
         antialias: true,
-        thickness: max(2, (strokeW * 0.55).round()),
+        thickness: max(2, (strokeW * 0.40).round()),
       );
     }
   }
@@ -105,16 +90,16 @@ img.Image _renderIcon({
   drawPolyline(topPts);
   drawPolyline(bottomPts.reversed.toList(growable: false));
 
-  // Iris + pupil
-  final irisR = (r * 0.22).round();
-  final pupilR = (r * 0.11).round();
+  // Iris + pupil (still part of the picture)
+  final irisR = (size * 0.075).round();
+  final pupilR = (size * 0.04).round();
   img.drawCircle(im, x: cx, y: cy, radius: irisR, color: stroke, antialias: true);
   img.drawCircle(
     im,
     x: cx,
     y: cy,
     radius: pupilR,
-    color: bg,
+    color: img.ColorUint8.rgba(0, 0, 0, 0),
     antialias: true,
   );
 
@@ -137,8 +122,9 @@ Future<void> main(List<String> args) async {
   final root = Directory.current.path;
 
   final themes = const [
-    _ThemeSpec(name: 'light', bgHex: '#2D2D2D', strokeHex: '#E0E0E0'),
-    _ThemeSpec(name: 'dark', bgHex: '#F5F5F5', strokeHex: '#424242'),
+    // Background is transparent; stroke controls eye color.
+    _ThemeSpec(name: 'light', bgHex: '#000000', strokeHex: '#111111'),
+    _ThemeSpec(name: 'dark', bgHex: '#000000', strokeHex: '#F2F2F2'),
   ];
 
   final standardSizes = const [48, 72, 96, 144, 192, 512];
