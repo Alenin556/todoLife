@@ -7,142 +7,88 @@ class AppScaffold extends StatelessWidget {
   const AppScaffold({
     super.key,
     required this.appState,
-    required this.location,
-    required this.child,
+    required this.navigationShell,
   });
 
   final AppState appState;
-  final String location;
-  final Widget child;
+  final StatefulNavigationShell navigationShell;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('todoLife')),
-      drawer: Drawer(
-        child: SafeArea(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              const DrawerHeader(
-                child: Text(
-                  'Меню',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-                ),
-              ),
-              _NavTile(
-                tileKey: const ValueKey('nav_home'),
-                selected: _isSelected('/'),
-                icon: Icons.home_outlined,
-                title: 'Главная',
-                onTap: () => _go(context, '/'),
-              ),
-              const Divider(),
-              _NavTile(
-                tileKey: const ValueKey('nav_daily'),
-                selected: _isSelected('/tasks/daily'),
-                icon: Icons.today_outlined,
-                title: 'Задачи на день',
-                onTap: () => _go(context, '/tasks/daily'),
-              ),
-              _NavTile(
-                tileKey: const ValueKey('nav_long'),
-                selected: _isSelected('/tasks/long'),
-                icon: Icons.event_note_outlined,
-                title: 'Долгосрочные задачи',
-                onTap: () => _go(context, '/tasks/long'),
-              ),
-              _NavTile(
-                tileKey: const ValueKey('nav_salary'),
-                selected: _isSelected('/finance/salary'),
-                icon: Icons.account_balance_wallet_outlined,
-                title: 'Подсчет финансов (ЗП)',
-                onTap: () => _go(context, '/finance/salary'),
-              ),
-              _NavTile(
-                tileKey: const ValueKey('nav_deposit'),
-                selected: _isSelected('/finance/deposit'),
-                icon: Icons.savings_outlined,
-                title: 'Подсчет вкладов',
-                onTap: () => _go(context, '/finance/deposit'),
-              ),
-              _NavTile(
-                tileKey: const ValueKey('nav_calendar'),
-                selected: _isSelected('/calendar'),
-                icon: Icons.calendar_month_outlined,
-                title: 'Календарь',
-                onTap: () => _go(context, '/calendar'),
-              ),
-              const Divider(),
-              _NavTile(
-                tileKey: const ValueKey('nav_quotes'),
-                selected: _isSelected('/motivation'),
-                icon: Icons.auto_awesome_outlined,
-                title: 'Мотивация',
-                onTap: () => _go(context, '/motivation'),
-              ),
-              const Divider(),
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: SegmentedButton<ThemeMode>(
-                  segments: const [
-                    ButtonSegment(
-                      value: ThemeMode.light,
-                      icon: Icon(Icons.light_mode_outlined),
-                      label: Text('Light'),
-                    ),
-                    ButtonSegment(
-                      value: ThemeMode.dark,
-                      icon: Icon(Icons.dark_mode_outlined),
-                      label: Text('Dark'),
-                    ),
-                  ],
-                  selected: <ThemeMode>{appState.themeMode},
-                  onSelectionChanged: (v) => appState.setTheme(v.first),
-                ),
-              ),
-            ],
-          ),
+      body: navigationShell,
+      bottomNavigationBar: _BottomNav(
+        currentIndex: navigationShell.currentIndex,
+        onTap: (i) => navigationShell.goBranch(
+          i,
+          initialLocation: i == navigationShell.currentIndex,
         ),
       ),
-      body: child,
     );
-  }
-
-  bool _isSelected(String route) => location == route || location.startsWith('$route/');
-
-  void _go(BuildContext context, String route) {
-    Navigator.of(context).maybePop();
-    if (location != route) {
-      context.go(route);
-    }
   }
 }
 
-class _NavTile extends StatelessWidget {
-  const _NavTile({
-    required this.tileKey,
-    required this.selected,
-    required this.icon,
-    required this.title,
-    required this.onTap,
-  });
+class _BottomNav extends StatelessWidget {
+  const _BottomNav({required this.currentIndex, required this.onTap});
 
-  final Key tileKey;
-  final bool selected;
-  final IconData icon;
-  final String title;
-  final VoidCallback onTap;
+  final int currentIndex;
+  final ValueChanged<int> onTap;
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      key: tileKey,
-      leading: Icon(icon),
-      title: Text(title),
-      selected: selected,
-      onTap: onTap,
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
+
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: Container(
+            decoration: BoxDecoration(
+              color: (isDark ? scheme.surfaceContainerHighest : scheme.surface)
+                  .withValues(alpha: isDark ? 0.65 : 0.92),
+              border: Border.all(
+                color: scheme.outlineVariant.withValues(alpha: isDark ? 0.55 : 0.9),
+              ),
+            ),
+            child: BottomNavigationBar(
+              type: BottomNavigationBarType.fixed,
+              currentIndex: currentIndex,
+              onTap: onTap,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              selectedItemColor: scheme.onSurface,
+              unselectedItemColor: scheme.onSurface.withValues(alpha: 0.6),
+              showUnselectedLabels: true,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.home_outlined),
+                  label: 'Главная',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.checklist_outlined),
+                  label: 'Задачи',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.calendar_month_outlined),
+                  label: 'Календарь',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.account_balance_wallet_outlined),
+                  label: 'Финансы',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.settings_outlined),
+                  label: 'Настройки',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

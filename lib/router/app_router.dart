@@ -9,6 +9,7 @@ import '../ui/screens/finance/salary_split_screen.dart';
 import '../ui/screens/calendar/calendar_screen.dart';
 import '../ui/screens/home/home_screen.dart';
 import '../ui/screens/quotes_home_screen.dart';
+import '../ui/screens/settings/settings_screen.dart';
 import '../ui/screens/tasks/task_edit_screen.dart';
 import '../ui/screens/tasks/task_list_screen.dart';
 
@@ -19,47 +20,72 @@ class AppRouter {
 
   late final GoRouter router = GoRouter(
     routes: [
-      ShellRoute(
-        builder: (context, state, child) {
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
           return AppStateScope(
             notifier: appState,
             child: AppScaffold(
               appState: appState,
-              location: state.matchedLocation,
-              child: child,
+              navigationShell: navigationShell,
             ),
           );
         },
-        routes: [
-          GoRoute(
-            path: '/',
-            builder: (context, state) => const HomeScreen(),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/',
+                builder: (context, state) => const HomeScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'motivation',
+                    builder: (context, state) => const QuotesHomeScreen(),
+                  ),
+                ],
+              ),
+            ],
           ),
-          GoRoute(
-            path: '/motivation',
-            builder: (context, state) => const QuotesHomeScreen(),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/tasks/daily',
+                builder: (context, state) =>
+                    const TaskListScreen(kind: TaskKind.daily),
+              ),
+              GoRoute(
+                path: '/tasks/long',
+                builder: (context, state) =>
+                    const TaskListScreen(kind: TaskKind.long),
+              ),
+            ],
           ),
-          GoRoute(
-            path: '/tasks/daily',
-            builder: (context, state) =>
-                const TaskListScreen(kind: TaskKind.daily),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/calendar',
+                builder: (context, state) => const CalendarScreen(),
+              ),
+            ],
           ),
-          GoRoute(
-            path: '/tasks/long',
-            builder: (context, state) =>
-                const TaskListScreen(kind: TaskKind.long),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/finance/salary',
+                builder: (context, state) => const SalarySplitScreen(),
+              ),
+              GoRoute(
+                path: '/finance/deposit',
+                builder: (context, state) => const DepositCalculatorScreen(),
+              ),
+            ],
           ),
-          GoRoute(
-            path: '/finance/salary',
-            builder: (context, state) => const SalarySplitScreen(),
-          ),
-          GoRoute(
-            path: '/finance/deposit',
-            builder: (context, state) => const DepositCalculatorScreen(),
-          ),
-          GoRoute(
-            path: '/calendar',
-            builder: (context, state) => const CalendarScreen(),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/settings',
+                builder: (context, state) => const SettingsScreen(),
+              ),
+            ],
           ),
         ],
       ),
