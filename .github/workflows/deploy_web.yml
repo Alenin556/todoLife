@@ -33,7 +33,10 @@ jobs:
         run: flutter pub get
 
       - name: Build web
-        run: flutter build web --release --base-href "/todoLife/"
+        run: flutter build web --release --base-href "./"
+
+      - name: SPA fallback (404.html)
+        run: cp build/web/index.html build/web/404.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
