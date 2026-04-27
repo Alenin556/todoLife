@@ -215,6 +215,18 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> resetSalarySplitAllocations() async {
+    _salarySplitDraft = SalarySplitDraft(
+      salary: _salarySplitDraft.salary,
+      percents: const {},
+      customAmounts: const {},
+      mode: SalarySplitMode.percent,
+      manualAmounts: const {},
+    );
+    await _storage.saveSalarySplitDraft(_salarySplitDraft);
+    notifyListeners();
+  }
+
   Future<void> setSalarySplitMode(SalarySplitMode mode) async {
     if (_salarySplitDraft.mode == mode) return;
     _salarySplitDraft = SalarySplitDraft(

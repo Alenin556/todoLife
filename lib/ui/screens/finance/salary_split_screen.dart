@@ -258,6 +258,40 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
               onSelectionChanged: (s) => appState.setSalarySplitMode(s.first),
             ),
             const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Сбросить значения?'),
+                      content: const Text('Проценты, суммы и категории будут очищены.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text('Отмена'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          child: const Text('Сбросить'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (ok != true) return;
+                  await appState.resetSalarySplitAllocations();
+                  for (final c in _amountCtrls.values) {
+                    c.text = '';
+                  }
+                  if (!mounted) return;
+                  setState(() {});
+                },
+                icon: const Icon(Icons.restart_alt),
+                label: const Text('Сбросить значения'),
+              ),
+            ),
+            const SizedBox(height: 8),
             if (diff > 0)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
