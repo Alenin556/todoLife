@@ -25,14 +25,6 @@ class _QuotesHomeScreenState extends State<QuotesHomeScreen> {
       author: 'Эпикур',
     ),
     _Quote(
-      text: 'Сначала скажи себе, каким ты хочешь быть, и затем делай, что нужно.',
-      author: 'Эпиктет',
-    ),
-    _Quote(
-      text: 'Счастье твоей жизни зависит от качества твоих мыслей.',
-      author: 'Марк Аврелий',
-    ),
-    _Quote(
       text: 'Дисциплина важнее мотивации.',
       author: 'Народная мудрость',
     ),
@@ -41,6 +33,12 @@ class _QuotesHomeScreenState extends State<QuotesHomeScreen> {
       author: 'Роберт Колльер',
     ),
   ];
+
+  static String? _authorLineForUi(_Quote q) {
+    final a = q.author.toLowerCase();
+    if (a == 'народная мудрость' || a == 'todolife') return null;
+    return q.author;
+  }
 
   int _i = 0;
 
@@ -53,7 +51,7 @@ class _QuotesHomeScreenState extends State<QuotesHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final q = _quotes[_i];
-    final authorLine = q.author;
+    final authorLine = _authorLineForUi(q);
 
     return SafeArea(
       child: Padding(
@@ -82,11 +80,13 @@ class _QuotesHomeScreenState extends State<QuotesHomeScreen> {
                               '“${q.text}”',
                               style: Theme.of(context).textTheme.titleLarge,
                             ),
-                            const SizedBox(height: 12),
-                            Text(
-                              authorLine,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
+                            if (authorLine != null) ...[
+                              const SizedBox(height: 12),
+                              Text(
+                                authorLine,
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ],
                           ],
                         ),
                       ),
