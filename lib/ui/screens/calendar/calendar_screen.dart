@@ -32,7 +32,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final totalCells = ((startWeekday + daysInMonth + 6) ~/ 7) * 7;
 
     return SafeArea(
-      child: Column(
+      child: ListView(
+        padding: EdgeInsets.zero,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -80,65 +81,66 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 7,
-                  mainAxisSpacing: 6,
-                  crossAxisSpacing: 6,
-                ),
-                itemCount: totalCells,
-                itemBuilder: (context, i) {
-                  final dayIndex = i - startWeekday + 1;
-                  if (dayIndex < 1 || dayIndex > daysInMonth) {
-                    return const SizedBox.shrink();
-                  }
-                  final d = DateTime(_month.year, _month.month, dayIndex);
-                  final key = _dateKey(d);
-                  final hasEvents = appState.hasEventsForDateKey(key);
-                  final isToday = DateTime.now().year == d.year &&
-                      DateTime.now().month == d.month &&
-                      DateTime.now().day == d.day;
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7,
+                mainAxisSpacing: 6,
+                crossAxisSpacing: 6,
+              ),
+              itemCount: totalCells,
+              itemBuilder: (context, i) {
+                final dayIndex = i - startWeekday + 1;
+                if (dayIndex < 1 || dayIndex > daysInMonth) {
+                  return const SizedBox.shrink();
+                }
+                final d = DateTime(_month.year, _month.month, dayIndex);
+                final key = _dateKey(d);
+                final hasEvents = appState.hasEventsForDateKey(key);
+                final isToday = DateTime.now().year == d.year &&
+                    DateTime.now().month == d.month &&
+                    DateTime.now().day == d.day;
 
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => CalendarDayScreen(date: d),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isToday
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).dividerColor,
-                        ),
+                return InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => CalendarDayScreen(date: d),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isToday
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).dividerColor,
+                      ),
+                      color: hasEvents
+                          ? Theme.of(context).colorScheme.primaryContainer
+                          : null,
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      '$dayIndex',
+                      style: TextStyle(
+                        fontWeight: hasEvents ? FontWeight.w700 : FontWeight.w500,
                         color: hasEvents
-                            ? Theme.of(context).colorScheme.primaryContainer
+                            ? Theme.of(context).colorScheme.onPrimaryContainer
                             : null,
                       ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '$dayIndex',
-                        style: TextStyle(
-                          fontWeight: hasEvents ? FontWeight.w700 : FontWeight.w500,
-                          color: hasEvents
-                              ? Theme.of(context).colorScheme.onPrimaryContainer
-                              : null,
-                        ),
-                      ),
                     ),
-                  );
-                },
-              ),
+                  ),
+                );
+              },
             ),
           ),
+          const SizedBox(height: 24),
         ],
       ),
     );
