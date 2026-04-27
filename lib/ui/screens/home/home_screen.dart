@@ -308,10 +308,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         selected: selected,
                         weekDays: weekDays,
                         hasEvents: (d) => appState.hasEventsForDateKey(_dateKey(d)),
-                        onSelect: (d) => setState(() {
-                          _selected = d;
-                          _weekAnchor = _startOfWeek(d);
-                        }),
+                        onSelect: (d) async {
+                          setState(() {
+                            _selected = d;
+                            _weekAnchor = _startOfWeek(d);
+                          });
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => CalendarEventEditScreen(date: d),
+                            ),
+                          );
+                        },
                         onPrevWeek: () => setState(() {
                           _weekAnchor = _weekAnchor.subtract(const Duration(days: 7));
                         }),

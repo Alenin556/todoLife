@@ -211,4 +211,17 @@ void main() {
     expect(find.text('Встреча'), findsOneWidget);
     expect(find.textContaining('09:00–09:30'), findsOneWidget);
   });
+
+  testWidgets('Home: tap day in mini calendar opens event creation',
+      (WidgetTester tester) async {
+    await pumpApp(tester);
+
+    final now = DateTime.now();
+    // Tap on today's day number in the mini week calendar.
+    await tester.tap(find.text('${now.day}').first, warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Новое событие'), findsOneWidget);
+    expect(find.text('Сохранить'), findsOneWidget);
+  });
 }
