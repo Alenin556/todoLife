@@ -19,16 +19,6 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime _weekAnchor = DateTime.now(); // Monday of visible week
   Timer? _quoteTimer;
   int _quoteIndex = 0;
-  Timer? _bgTimer;
-  int _bgIndex = 0;
-
-  static const _bgAssets = <String>[
-    'assets/images/home_bg.jpg',
-    'assets/images/home_bg_1.png',
-    'assets/images/home_bg_2.png',
-    'assets/images/home_bg_3.png',
-    'assets/images/home_bg_4.png',
-  ];
 
   static const _quotes = <({String text, String author})>[
     (
@@ -75,29 +65,12 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       _nextQuote();
     });
-
-    _bgTimer = Timer.periodic(const Duration(seconds: 20), (_) {
-      if (!mounted) return;
-      setState(() {
-        _bgIndex = (_bgIndex + 1) % _bgAssets.length;
-      });
-    });
   }
 
   @override
   void dispose() {
     _quoteTimer?.cancel();
-    _bgTimer?.cancel();
     super.dispose();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Precache backgrounds for smooth cross-fade.
-    for (final a in _bgAssets) {
-      precacheImage(AssetImage(a), context);
-    }
   }
 
   DateTime _startOfWeek(DateTime d) {
@@ -141,15 +114,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Stack(
       children: [
         Positioned.fill(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 900),
-            switchInCurve: Curves.easeOut,
-            switchOutCurve: Curves.easeIn,
-            child: Image.asset(
-              _bgAssets[_bgIndex],
-              key: ValueKey('bg_$_bgIndex'),
-              fit: BoxFit.cover,
-            ),
+          child: Image.asset(
+            'assets/images/home_bg.jpg',
+            fit: BoxFit.cover,
           ),
         ),
         Positioned.fill(

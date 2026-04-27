@@ -38,26 +38,69 @@ extension TaskKindX on TaskKind {
   }
 }
 
-class TaskListScreen extends StatelessWidget {
-  const TaskListScreen({super.key, required this.kind});
+class TasksScreen extends StatefulWidget {
+  const TasksScreen({super.key});
 
-  final TaskKind kind;
+  @override
+  State<TasksScreen> createState() => _TasksScreenState();
+}
+
+class _TasksScreenState extends State<TasksScreen> {
+  TaskKind _kind = TaskKind.daily;
+  bool _initialized = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    final kindParam = GoRouterState.of(context).uri.queryParameters['kind'];
+    _kind = TaskKindX.tryParse(kindParam) ?? TaskKind.daily;
+    _initialized = true;
+  }
+
+  Future<void> _openAddMenu() async {
+    final selected = await showMenu<String>(
+      context: context,
+      position: const RelativeRect.fromLTRB(1000, 1000, 16, 16),
+      items: const [
+        PopupMenuItem(
+          value: 'daily',
+          child: ListTile(
+            leading: Icon(Icons.add),
+            title: Text('Задача на день'),
+          ),
+        ),
+        PopupMenuItem(
+          value: 'long',
+          child: ListTile(
+            leading: Icon(Icons.access_time),
+            title: Text('Долгосрочная задача'),
+          ),
+        ),
+      ],
+    );
+    if (!mounted || selected == null) return;
+    context.go('/tasks/edit?kind=$selected');
+  }
 
   @override
   Widget build(BuildContext context) {
     final appState = AppStateScope.of(context);
-    final items = appState.tasks(kind);
+    // Non-blocking freshness check; if date changed, state will notify.
+    appState.ensureDailyTasksFresh();
+
+    final hasLong = appState.tasks(TaskKind.long).isNotEmpty;
+    final effectiveKind = (!hasLong && _kind == TaskKind.long) ? TaskKind.daily : _kind;
+    if (effectiveKind != _kind) _kind = effectiveKind;
+
+    final items = appState.tasks(_kind);
     final doneCount = items.where((t) => t.done).length;
-    if (kind == TaskKind.daily) {
-      // Non-blocking freshness check; if date changed, state will notify.
-      appState.ensureDailyTasksFresh();
-    }
 
     return SafeArea(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         floatingActionButton: FloatingActionButton(
-          onPressed: () => context.go('/tasks/${kind.routeSegment}/edit'),
+          onPressed: _openAddMenu,
           child: const Icon(Icons.add),
         ),
         body: CustomScrollView(
@@ -72,7 +115,7 @@ class TaskListScreen extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            kind == TaskKind.daily ? _todayLabel() : kind.label,
+                            _kind == TaskKind.daily ? _todayLabel() : _kind.label,
                             style: Theme.of(context).textTheme.headlineSmall,
                           ),
                         ),
@@ -86,7 +129,7 @@ class TaskListScreen extends StatelessWidget {
                                     builder: (context) => AlertDialog(
                                       title: const Text('Сбросить все задачи?'),
                                       content: Text(
-                                        kind == TaskKind.daily
+                                        _kind == TaskKind.daily
                                             ? 'Будут удалены все задачи на день.'
                                             : 'Будут удалены все долгосрочные задачи.',
                                       ),
@@ -105,13 +148,36 @@ class TaskListScreen extends StatelessWidget {
                                     ),
                                   );
                                   if (yes == true) {
-                                    await appState.clearTasks(kind);
+                                    await appState.clearTasks(_kind);
                                   }
                                 },
                           icon: const Icon(Icons.delete_sweep_outlined),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 12),
+                    if (hasLong)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: SegmentedButton<TaskKind>(
+                          segments: const [
+                            ButtonSegment(
+                              value: TaskKind.daily,
+                              label: Text('Сегодня'),
+                            ),
+                            ButtonSegment(
+                              value: TaskKind.long,
+                              label: Text('Долгосрочные'),
+                            ),
+                          ],
+                          selected: {_kind},
+                          onSelectionChanged: (s) {
+                            final next = s.first;
+                            setState(() => _kind = next);
+                            context.go('/tasks?kind=${next.routeSegment}');
+                          },
+                        ),
+                      ),
                     const SizedBox(height: 12),
                     Text('Выполнено: $doneCount из ${items.length}'),
                   ],
@@ -139,17 +205,17 @@ class TaskListScreen extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final item = items[index];
                     return _TaskTile(
-                      kind: kind,
+                      kind: _kind,
                       item: item,
                       onToggle: (v) => appState.toggleTaskDone(
-                        kind,
+                        _kind,
                         item.id,
                         v,
                       ),
                       onEdit: () => context.go(
-                        '/tasks/${kind.routeSegment}/edit?id=${Uri.encodeComponent(item.id)}',
+                        '/tasks/edit?kind=${_kind.routeSegment}&id=${Uri.encodeComponent(item.id)}',
                       ),
-                      onDelete: () => appState.deleteTask(kind, item.id),
+                      onDelete: () => appState.deleteTask(_kind, item.id),
                     );
                   },
                 ),

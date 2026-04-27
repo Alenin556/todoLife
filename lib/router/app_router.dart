@@ -48,14 +48,8 @@ class AppRouter {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/tasks/daily',
-                builder: (context, state) =>
-                    const TaskListScreen(kind: TaskKind.daily),
-              ),
-              GoRoute(
-                path: '/tasks/long',
-                builder: (context, state) =>
-                    const TaskListScreen(kind: TaskKind.long),
+                path: '/tasks',
+                builder: (context, state) => const TasksScreen(),
               ),
             ],
           ),
@@ -90,15 +84,28 @@ class AppRouter {
         ],
       ),
       GoRoute(
-        path: '/tasks/:kind/edit',
+        path: '/tasks/edit',
         builder: (context, state) {
-          final kindParam = state.pathParameters['kind'];
+          final kindParam = state.uri.queryParameters['kind'];
           final kind = TaskKindX.tryParse(kindParam) ?? TaskKind.daily;
           final taskId = state.uri.queryParameters['id'];
           return AppStateScope(
             notifier: appState,
             child: TaskEditScreen(kind: kind, taskId: taskId),
           );
+        },
+      ),
+      // Backward-compatible route (old deep links).
+      GoRoute(
+        path: '/tasks/:kind/edit',
+        redirect: (context, state) {
+          final kind = state.pathParameters['kind'];
+          final id = state.uri.queryParameters['id'];
+          final qp = <String, String>{
+            'kind': kind ?? 'daily',
+            if (id != null) 'id': id,
+          };
+          return Uri(path: '/tasks/edit', queryParameters: qp).toString();
         },
       ),
     ],

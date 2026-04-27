@@ -69,6 +69,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.add));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Задача на день'));
+    await tester.pumpAndSettle();
     expect(find.text('Новая задача'), findsOneWidget);
 
     // Save to return (edit route is opened via go(), no back stack).
@@ -139,6 +141,8 @@ void main() {
     await tester.tap(find.text('Задачи'));
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.add));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Задача на день'));
     await tester.pumpAndSettle();
     expect(find.text('Новая задача'), findsOneWidget);
 

@@ -94,7 +94,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
       if (context.canPop()) {
         context.pop();
       } else {
-        context.go('/tasks/${widget.kind.routeSegment}');
+        context.go('/tasks?kind=${widget.kind.routeSegment}');
       }
     }
 
@@ -170,7 +170,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                     deadlineDateKey: deadlineKey,
                   );
                   if (!context.mounted) return;
-                  context.go('/tasks/${widget.kind.routeSegment}');
+                  context.go('/tasks?kind=${widget.kind.routeSegment}');
                 },
                 child: const Text('Сохранить'),
               ),
