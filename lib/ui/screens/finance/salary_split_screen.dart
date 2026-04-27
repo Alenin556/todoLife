@@ -16,7 +16,6 @@ class SalarySplitScreen extends StatefulWidget {
 class _SalarySplitScreenState extends State<SalarySplitScreen> {
   TextEditingController? _salary;
   bool _initialized = false;
-  bool _confirmed = false;
   final _money = NumberFormat('#,##0', 'ru_RU');
   final Map<String, TextEditingController> _amountCtrls = {};
 
@@ -47,7 +46,6 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
     _salary = TextEditingController(
       text: draft.salary == 0 ? '' : _fmt(draft.salary),
     );
-    _confirmed = draft.salary > 0;
     _initialized = true;
   }
 
@@ -91,31 +89,6 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
       }
     }
     return exceedings;
-  }
-
-  Future<void> _confirmSalary(double salary) async {
-    final appState = AppStateScope.of(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Подтвердить сумму?'),
-        content: Text('ЗП: ${_fmt(salary)}'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Изменить'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Подтвердить'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    await appState.setSalary(salary);
-    if (!mounted) return;
-    setState(() => _confirmed = true);
   }
 
   TextEditingController _amountCtrl(String category, double amount) {
@@ -174,21 +147,17 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
               labelText: 'Зарплата (ЗП)',
               border: OutlineInputBorder(),
             ),
-            onChanged: (_) {
-              setState(() {
-                if (_confirmed) _confirmed = false;
-              });
+            onChanged: (s) async {
+              final v = _parse(s);
+              await appState.setSalary(v);
+              if (!mounted) return;
+              setState(() {});
             },
           ),
           const SizedBox(height: 8),
-          if (!_confirmed) ...[
-            FilledButton(
-              onPressed: salary > 0 ? () => _confirmSalary(salary) : null,
-              child: const Text('Подтвердить сумму'),
-            ),
-            const SizedBox(height: 8),
+          if (draft.salary <= 0) ...[
             Text(
-              'После подтверждения появятся параметры распределения.',
+              'Введите зарплату, чтобы начать распределение.',
               style: Theme.of(context).textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
