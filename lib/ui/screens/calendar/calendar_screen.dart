@@ -247,8 +247,6 @@ class CalendarEventEditScreen extends StatefulWidget {
 class _CalendarEventEditScreenState extends State<CalendarEventEditScreen> {
   final _title = TextEditingController();
   final _note = TextEditingController();
-  TimeOfDay? _start;
-  TimeOfDay? _end;
   int? _reminder;
   bool _initialized = false;
 
@@ -276,26 +274,9 @@ class _CalendarEventEditScreenState extends State<CalendarEventEditScreen> {
         _title.text = e.title;
         _note.text = e.note ?? '';
         _reminder = e.reminderMinutes;
-        _start = _parseTime(e.startTime);
-        _end = _parseTime(e.endTime);
       }
     }
     _initialized = true;
-  }
-
-  TimeOfDay? _parseTime(String? s) {
-    if (s == null) return null;
-    final parts = s.split(':');
-    if (parts.length != 2) return null;
-    final h = int.tryParse(parts[0]);
-    final m = int.tryParse(parts[1]);
-    if (h == null || m == null) return null;
-    return TimeOfDay(hour: h, minute: m);
-  }
-
-  String? _formatTime(TimeOfDay? t) {
-    if (t == null) return null;
-    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -321,38 +302,6 @@ class _CalendarEventEditScreenState extends State<CalendarEventEditScreen> {
                 labelText: 'Название',
                 border: OutlineInputBorder(),
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () async {
-                      final picked = await showTimePicker(
-                        context: context,
-                        initialTime: _start ?? TimeOfDay.now(),
-                      );
-                      if (picked == null) return;
-                      setState(() => _start = picked);
-                    },
-                    child: Text(_start == null ? 'Начало' : _formatTime(_start)!),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () async {
-                      final picked = await showTimePicker(
-                        context: context,
-                        initialTime: _end ?? (_start ?? TimeOfDay.now()),
-                      );
-                      if (picked == null) return;
-                      setState(() => _end = picked);
-                    },
-                    child: Text(_end == null ? 'Конец' : _formatTime(_end)!),
-                  ),
-                ),
-              ],
             ),
             const SizedBox(height: 12),
             TextField(
@@ -390,8 +339,8 @@ class _CalendarEventEditScreenState extends State<CalendarEventEditScreen> {
                   id: id,
                   title: title,
                   dateKey: _dateKey(widget.date),
-                  startTime: _formatTime(_start),
-                  endTime: _formatTime(_end),
+                  startTime: null,
+                  endTime: null,
                   note: _note.text.trim().isEmpty ? null : _note.text.trim(),
                   reminderMinutes: _reminder,
                   createdAtMs: now,
