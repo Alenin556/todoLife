@@ -64,30 +64,58 @@ img.Image _renderIcon({
   final strokeW = max(2, (size * 0.043).round()); // ~44 at 1024
   _drawCircleStroke(im, cx, cy, r, strokeW, stroke);
 
-  // Checkmark (top area of coin)
-  final p1 = Point((size * 0.395).round(), (size * 0.400).round());
-  final p2 = Point((size * 0.465).round(), (size * 0.470).round());
-  final p3 = Point((size * 0.610).round(), (size * 0.322).round());
+  // Eye mark (centered)
+  final eyeW = (r * 1.45).round();
+  final eyeH = (r * 0.72).round();
+  final steps = 48;
 
-  img.drawLine(
+  List<Point<int>> makeEyePoints(bool top) {
+    final pts = <Point<int>>[];
+    for (int i = 0; i <= steps; i++) {
+      final t = i / steps; // 0..1
+      final x = (t * 2 - 1); // -1..1
+      // Smooth arc: y = sin(pi*(1-|x|)) gives 0 at edges, 1 at center.
+      final k = sin(pi * (1 - x.abs()));
+      final y = (top ? -1 : 1) * k;
+      final px = cx + (x * (eyeW / 2)).round();
+      final py = cy + (y * (eyeH / 2)).round();
+      pts.add(Point(px, py));
+    }
+    return pts;
+  }
+
+  final topPts = makeEyePoints(true);
+  final bottomPts = makeEyePoints(false);
+
+  void drawPolyline(List<Point<int>> pts) {
+    for (int i = 0; i < pts.length - 1; i++) {
+      img.drawLine(
+        im,
+        x1: pts[i].x,
+        y1: pts[i].y,
+        x2: pts[i + 1].x,
+        y2: pts[i + 1].y,
+        color: stroke,
+        antialias: true,
+        thickness: max(2, (strokeW * 0.55).round()),
+      );
+    }
+  }
+
+  drawPolyline(topPts);
+  drawPolyline(bottomPts.reversed.toList(growable: false));
+
+  // Iris + pupil
+  final irisR = (r * 0.22).round();
+  final pupilR = (r * 0.11).round();
+  img.drawCircle(im, x: cx, y: cy, radius: irisR, color: stroke, antialias: true);
+  img.drawCircle(
     im,
-    x1: p1.x,
-    y1: p1.y,
-    x2: p2.x,
-    y2: p2.y,
-    color: stroke,
+    x: cx,
+    y: cy,
+    radius: pupilR,
+    color: bg,
     antialias: true,
-    thickness: strokeW,
-  );
-  img.drawLine(
-    im,
-    x1: p2.x,
-    y1: p2.y,
-    x2: p3.x,
-    y2: p3.y,
-    color: stroke,
-    antialias: true,
-    thickness: strokeW,
   );
 
   return im;

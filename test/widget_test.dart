@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 
 import 'package:todolife/app_state.dart';
 import 'package:todolife/main.dart';
+import 'package:todolife/models/calendar_event.dart';
 import 'package:todolife/services/user_storage.dart';
 import 'package:todolife/ui/screens/settings/settings_screen.dart';
 
@@ -154,5 +155,60 @@ void main() {
     await tester.tap(find.text('Остаться'));
     await tester.pumpAndSettle();
     expect(find.text('Новая задача'), findsOneWidget);
+  });
+
+  testWidgets('Tasks: long-term creation enables segmented toggle', (WidgetTester tester) async {
+    await pumpApp(tester);
+
+    await tester.tap(find.text('Задачи'));
+    await tester.pumpAndSettle();
+
+    // Create long task via FAB menu.
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Долгосрочная задача'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField).first, 'Цель');
+    await tester.tap(find.text('Сохранить'));
+    await tester.pumpAndSettle();
+
+    // Segmented appears once long tasks exist.
+    expect(find.text('Долгосрочные'), findsOneWidget);
+    await tester.tap(find.text('Долгосрочные'));
+    await tester.pumpAndSettle();
+    expect(find.text('Цель'), findsOneWidget);
+  });
+
+  testWidgets('Calendar: event time is displayed in day view', (WidgetTester tester) async {
+    final appState = await pumpApp(tester);
+
+    final now = DateTime.now();
+    final todayKey =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    await appState.upsertCalendarEvent(
+      CalendarEvent(
+        id: 'test-event',
+        title: 'Встреча',
+        dateKey: todayKey,
+        startTime: '09:00',
+        endTime: '09:30',
+        createdAtMs: DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Календарь'));
+    await tester.pumpAndSettle();
+
+    // Open today's day view by tapping the day number.
+    final dayCell = find.text('${now.day}').first;
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -220));
+    await tester.pumpAndSettle();
+    await tester.tap(dayCell, warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Встреча'), findsOneWidget);
+    expect(find.textContaining('09:00–09:30'), findsOneWidget);
   });
 }
