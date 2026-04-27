@@ -125,53 +125,6 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
     );
   }
 
-  Future<void> _editAmountForCategory({
-    required dynamic appState,
-    required String category,
-    required double currentAmount,
-  }) async {
-    final c = TextEditingController(text: currentAmount <= 0 ? '' : _fmt(currentAmount));
-    final amount = await showDialog<double>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Сумма: $category'),
-        content: TextField(
-          controller: c,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [
-            FilteringTextInputFormatter.allow(
-              RegExp(r'[0-9\s\u00A0\.,]'),
-            ),
-            ThousandsSeparatorInputFormatter(),
-          ],
-          decoration: const InputDecoration(
-            labelText: 'Сумма',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final v = _parse(c.text);
-              Navigator.of(context).pop(v);
-            },
-            child: const Text('Сохранить'),
-          ),
-        ],
-      ),
-    );
-    if (amount == null) return;
-    await appState.setSalarySplitMode(SalarySplitMode.amount);
-    await appState.setSalaryAmount(category, amount);
-    final ctrl = _amountCtrl(category, amount);
-    ctrl.text = amount <= 0 ? '' : _fmt(amount);
-    setState(() {});
-  }
-
   @override
   Widget build(BuildContext context) {
     final appState = AppStateScope.of(context);
@@ -190,9 +143,8 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
         draft.customAmounts.values.fold<double>(0, (a, b) => a + b);
     final manualTotal =
         draft.manualAmounts.values.fold<double>(0, (a, b) => a + b);
-    final allocated = draft.mode == SalarySplitMode.amount
-        ? manualTotal
-        : allocatedByPercents;
+    // Single-screen editor always shows manual amounts; percents are helpers.
+    final allocated = manualTotal;
     final diff = draft.salary - allocated - customTotal;
     final exceedings = _customExceedings(
       salary: draft.salary,
@@ -309,43 +261,39 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
                   ),
                 ),
               ),
-            if (draft.mode == SalarySplitMode.percent) ...[
-              for (final k in _required) _CategoryPercentRow(
-                title: k,
-                salary: draft.salary,
-                currentPercent: percents[k] ?? 0,
-                totalPercent: totalPercent,
-                percentOptions: _percentOptions,
-                onPick: (p) => appState.setSalaryPercent(k, p),
-                onEditAmount: () => _editAmountForCategory(
-                  appState: appState,
-                  category: k,
-                  currentAmount: draft.manualAmounts[k] ?? 0,
-                ),
-              ),
-              const SizedBox(height: 4),
-              for (final k in _optional) _CategoryPercentRow(
-                title: k,
-                salary: draft.salary,
-                currentPercent: percents[k] ?? 0,
-                totalPercent: totalPercent,
-                percentOptions: _percentOptions,
-                onPick: (p) => appState.setSalaryPercent(k, p),
-                onEditAmount: () => _editAmountForCategory(
-                  appState: appState,
-                  category: k,
-                  currentAmount: draft.manualAmounts[k] ?? 0,
-                ),
-              ),
-            ] else ...[
-              _AmountsEditorCard(
-                requiredCategories: _required,
-                optionalCategories: _optional,
-                controllerFor: (cat) => _amountCtrl(cat, draft.manualAmounts[cat] ?? 0),
-                onChanged: (cat, v) => appState.setSalaryAmount(cat, v),
-                parse: _parse,
-              ),
-            ],
+            _AmountsEditorCard(
+              requiredCategories: _required,
+              optionalCategories: _optional,
+              salary: draft.salary,
+              percents: percents,
+              percentOptions: _percentOptions,
+              controllerFor: (cat) => _amountCtrl(cat, draft.manualAmounts[cat] ?? 0),
+              onChangedAmount: (cat, v) async {
+                // Manual edit overrides percent helper for this category.
+                await appState.setSalaryAmount(cat, v);
+                if (percents.containsKey(cat)) {
+                  await appState.setSalaryPercent(cat, 0);
+                }
+              },
+              onPickPercent: (cat, p) async {
+                await appState.setSalaryPercent(cat, p);
+                final nextAmount = _amount(draft.salary, p);
+                await appState.setSalaryAmount(cat, nextAmount);
+                final ctrl = _amountCtrl(cat, nextAmount);
+                ctrl.text = nextAmount <= 0 ? '' : _fmt(nextAmount);
+                setState(() {});
+              },
+              onClear: (cat) async {
+                await appState.setSalaryAmount(cat, 0);
+                if (percents.containsKey(cat)) {
+                  await appState.setSalaryPercent(cat, 0);
+                }
+                final ctrl = _amountCtrl(cat, 0);
+                ctrl.text = '';
+                setState(() {});
+              },
+              parse: _parse,
+            ),
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerLeft,
@@ -426,12 +374,9 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (draft.mode == SalarySplitMode.percent)
-                      Text(
-                        'Распределено: $totalPercent%  (${_fmt(allocated)})',
-                      )
-                    else
-                      Text('Распределено: ${_fmt(allocated)}'),
+                    Text('Распределено: $totalPercent%  (${_fmt(allocatedByPercents)})'),
+                    const SizedBox(height: 6),
+                    Text('Суммами: ${_fmt(allocated)}'),
                     const SizedBox(height: 8),
                     Text(
                       diff >= 0 ? 'Остаток: ${_fmt(diff)}' : 'Дефицит: ${_fmt(diff.abs())}',
@@ -621,15 +566,25 @@ class _AmountsEditorCard extends StatelessWidget {
   const _AmountsEditorCard({
     required this.requiredCategories,
     required this.optionalCategories,
+    required this.salary,
+    required this.percents,
+    required this.percentOptions,
     required this.controllerFor,
-    required this.onChanged,
+    required this.onChangedAmount,
+    required this.onPickPercent,
+    required this.onClear,
     required this.parse,
   });
 
   final List<String> requiredCategories;
   final List<String> optionalCategories;
+  final double salary;
+  final Map<String, int> percents;
+  final List<int> percentOptions;
   final TextEditingController Function(String category) controllerFor;
-  final void Function(String category, double value) onChanged;
+  final void Function(String category, double value) onChangedAmount;
+  final void Function(String category, int percent) onPickPercent;
+  final void Function(String category) onClear;
   final double Function(String) parse;
 
   @override
@@ -644,44 +599,114 @@ class _AmountsEditorCard extends StatelessWidget {
             Text('Суммы по категориям', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: 10),
             for (final cat in all) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      cat,
-                      style: Theme.of(context).textTheme.bodyMedium,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 140,
-                    child: TextField(
-                      controller: controllerFor(cat),
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(
-                          RegExp(r'[0-9\s\u00A0\.,]'),
-                        ),
-                        ThousandsSeparatorInputFormatter(),
-                      ],
-                      decoration: const InputDecoration(
-                        labelText: '₽',
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
-                      onChanged: (s) => onChanged(cat, parse(s)),
-                    ),
-                  ),
-                ],
+              _AmountRowWithPercents(
+                title: cat,
+                salary: salary,
+                currentPercent: percents[cat] ?? 0,
+                percentOptions: percentOptions,
+                controller: controllerFor(cat),
+                parse: parse,
+                onChangedAmount: (v) => onChangedAmount(cat, v),
+                onPickPercent: (p) => onPickPercent(cat, p),
+                onClear: () => onClear(cat),
               ),
               if (cat != all.last) const SizedBox(height: 10),
             ],
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AmountRowWithPercents extends StatelessWidget {
+  const _AmountRowWithPercents({
+    required this.title,
+    required this.salary,
+    required this.currentPercent,
+    required this.percentOptions,
+    required this.controller,
+    required this.parse,
+    required this.onChangedAmount,
+    required this.onPickPercent,
+    required this.onClear,
+  });
+
+  final String title;
+  final double salary;
+  final int currentPercent;
+  final List<int> percentOptions;
+  final TextEditingController controller;
+  final double Function(String) parse;
+  final ValueChanged<double> onChangedAmount;
+  final ValueChanged<int> onPickPercent;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final fmt = NumberFormat('#,##0', 'ru_RU');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.bodyMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 150,
+              child: TextField(
+                controller: controller,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(
+                    RegExp(r'[0-9\s\u00A0\.,]'),
+                  ),
+                  ThousandsSeparatorInputFormatter(),
+                ],
+                decoration: InputDecoration(
+                  labelText: '₽',
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                  suffixIcon: IconButton(
+                    tooltip: 'Очистить',
+                    onPressed: onClear,
+                    icon: const Icon(Icons.clear),
+                  ),
+                ),
+                onChanged: (s) => onChangedAmount(parse(s)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final p in percentOptions)
+              ChoiceChip(
+                label: Text(p == 0 ? '0%' : '$p%'),
+                selected: currentPercent == p && p != 0,
+                onSelected: (selected) {
+                  if (!selected) return;
+                  onPickPercent(p);
+                },
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Подстановка: ${currentPercent == 0 ? '—' : '$currentPercent% (${fmt.format(salary * currentPercent / 100.0)})'}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
     );
   }
 }
@@ -772,106 +797,6 @@ class _AddCategoryDialogState extends State<_AddCategoryDialog> {
           child: const Text('Добавить'),
         ),
       ],
-    );
-  }
-}
-
-class _CategoryPercentRow extends StatelessWidget {
-  const _CategoryPercentRow({
-    required this.title,
-    required this.salary,
-    required this.currentPercent,
-    required this.totalPercent,
-    required this.percentOptions,
-    required this.onPick,
-    required this.onEditAmount,
-  });
-
-  final String title;
-  final double salary;
-  final int currentPercent;
-  final int totalPercent;
-  final List<int> percentOptions;
-  final ValueChanged<int> onPick;
-  final VoidCallback onEditAmount;
-
-  double _amount(double salary, int percent) => salary * percent / 100.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final fmt = NumberFormat('#,##0', 'ru_RU');
-    final baseWithoutThis = totalPercent - currentPercent;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(title, style: Theme.of(context).textTheme.titleSmall),
-                ),
-                InkWell(
-                  onTap: onEditAmount,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          currentPercent == 0
-                              ? '—'
-                              : fmt.format(_amount(salary, currentPercent)),
-                          style: Theme.of(context).textTheme.titleSmall,
-                        ),
-                        const SizedBox(width: 6),
-                        Icon(
-                          Icons.edit_outlined,
-                          size: 16,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withValues(alpha: 0.65),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final p in percentOptions)
-                  ChoiceChip(
-                    label: Text(p == 0 ? '0%' : '$p%'),
-                    selected: currentPercent == p,
-                    onSelected: (selected) {
-                      if (!selected) return;
-                      // Prevent exceeding 100%.
-                      final nextTotal = baseWithoutThis + p;
-                      if (nextTotal > 100) return;
-                      onPick(p);
-                    },
-                  ),
-              ],
-            ),
-            if (baseWithoutThis + currentPercent >= 100)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  'Достигнут лимит 100% — чтобы добавить, уменьшите процент в другой категории.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-          ],
-        ),
-      ),
     );
   }
 }
