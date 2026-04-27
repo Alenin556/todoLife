@@ -92,9 +92,9 @@ BEGIN
             VALUE "CompanyName", "com.example" "\0"
             VALUE "FileDescription", "todoLife" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "tofolife" "\0"
+            VALUE "InternalName", "todolife" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "tofolife.exe" "\0"
+            VALUE "OriginalFilename", "todolife.exe" "\0"
             VALUE "ProductName", "todoLife" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END

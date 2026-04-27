@@ -230,38 +230,44 @@ class _QuoteView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        // Intentionally no manual switch; auto-rotates.
+    // Keep layout robust for small heights (e.g. tests / web resize).
+    return LayoutBuilder(
+      builder: (context, c) {
+        final compact = c.maxHeight < 140;
+        final quoteSize = compact ? 18.0 : 22.0;
+        final quoteLines = compact ? 3 : 4;
+        final authorSize = compact ? 9.0 : 10.0;
+        final gap = compact ? 6.0 : 10.0;
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '“$text”',
+              maxLines: quoteLines,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.92),
+                fontSize: quoteSize,
+                height: 1.16,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.2,
+              ),
+            ),
+            SizedBox(height: gap),
+            Text(
+              author.toUpperCase(),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.62),
+                fontSize: authorSize,
+                letterSpacing: 2.4,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        );
       },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '“$text”',
-            maxLines: 4,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.92),
-              fontSize: 22,
-              height: 1.2,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.2,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            author.toUpperCase(),
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.62),
-              fontSize: 10,
-              letterSpacing: 2.4,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

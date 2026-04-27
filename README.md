@@ -63,7 +63,7 @@ flutter build apk --release
 flutter build windows --release
 ```
 
-Файл: `build/windows/x64/runner/Release/tofolife.exe`
+Файл: `build/windows/x64/runner/Release/todolife.exe`
 
 ### Web
 

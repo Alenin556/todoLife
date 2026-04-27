@@ -1,4 +1,4 @@
-package com.example.tofolife
+package com.example.todolife
 
 import io.flutter.embedding.android.FlutterActivity
 
