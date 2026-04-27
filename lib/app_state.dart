@@ -4,12 +4,15 @@ import 'models/task_item.dart';
 import 'models/calendar_event.dart';
 import 'models/salary_split.dart';
 import 'services/user_storage.dart';
+import 'services/notifications_service.dart';
 import 'ui/screens/tasks/task_list_screen.dart';
 
 class AppState extends ChangeNotifier {
-  AppState(this._storage);
+  AppState(this._storage, {NotificationsService? notifications})
+      : _notifications = notifications;
 
   final UserStorage _storage;
+  final NotificationsService? _notifications;
 
   ThemeMode _themeMode = ThemeMode.light;
   bool _ready = false;
@@ -336,6 +339,8 @@ class AppState extends ChangeNotifier {
     }
     _calendarEvents = next;
     await _storage.saveCalendarEvents(_calendarEvents);
+    // Android notification: only if startTime exists.
+    await _notifications?.scheduleOrUpdateForCalendarEvent(event);
     notifyListeners();
   }
 
@@ -343,6 +348,7 @@ class AppState extends ChangeNotifier {
     final next = _calendarEvents.where((e) => e.id != id).toList(growable: false);
     _calendarEvents = next;
     await _storage.saveCalendarEvents(_calendarEvents);
+    await _notifications?.cancelForEventId(id);
     notifyListeners();
   }
 }

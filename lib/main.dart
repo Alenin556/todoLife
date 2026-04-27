@@ -9,6 +9,7 @@ import 'dart:io';
 
 import 'app_state.dart';
 import 'router/app_router.dart';
+import 'services/notifications_service.dart';
 import 'services/user_storage.dart';
 import 'ui/theme/app_theme.dart';
 
@@ -22,7 +23,11 @@ Future<void> main() async {
     SharedPreferencesWindows.registerWith();
   }
   final storage = await UserStorage.open();
-  final appState = AppState(storage);
+  NotificationsService? notifications;
+  if (!kIsWeb) {
+    notifications = await NotificationsService.createAndInit();
+  }
+  final appState = AppState(storage, notifications: notifications);
   await appState.init();
   runApp(MyApp(appState: appState));
 }
