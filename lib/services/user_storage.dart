@@ -17,8 +17,10 @@ class UserStorage {
   static const _kTasksDaily = 'tasks_daily_v1';
   static const _kTasksLong = 'tasks_long_v1';
   static const _kTasksDailyDate = 'tasks_daily_date_v1';
-  static const _kSalarySplitLast = 'salary_split_last_v3';
-  static const _kSalarySplitSaved = 'salary_split_saved_v3';
+  static const _kSalarySplitLastV3 = 'salary_split_last_v3';
+  static const _kSalarySplitSavedV3 = 'salary_split_saved_v3';
+  static const _kSalarySplitLast = 'salary_split_last_v4';
+  static const _kSalarySplitSaved = 'salary_split_saved_v4';
   static const _kCalendarEvents = 'calendar_events_v1';
 
   static Future<UserStorage> open() async {
@@ -78,13 +80,26 @@ class UserStorage {
   }
 
   SalarySplitDraft loadSalarySplitDraft() {
-    final raw = _p.getString(_kSalarySplitLast);
+    // Prefer newest schema, but fall back to v3.
+    final raw = _p.getString(_kSalarySplitLast) ?? _p.getString(_kSalarySplitLastV3);
     if (raw == null || raw.trim().isEmpty) {
-      return const SalarySplitDraft(salary: 0, percents: {}, customAmounts: {});
+      return const SalarySplitDraft(
+        salary: 0,
+        percents: {},
+        customAmounts: {},
+        mode: SalarySplitMode.percent,
+        manualAmounts: {},
+      );
     }
     final decoded = jsonDecode(raw);
     if (decoded is! Map) {
-      return const SalarySplitDraft(salary: 0, percents: {}, customAmounts: {});
+      return const SalarySplitDraft(
+        salary: 0,
+        percents: {},
+        customAmounts: {},
+        mode: SalarySplitMode.percent,
+        manualAmounts: {},
+      );
     }
     return SalarySplitDraft.fromJson(
       decoded.map((k, v) => MapEntry(k.toString(), v)),
@@ -96,7 +111,7 @@ class UserStorage {
   }
 
   List<SalarySplitSaved> loadSavedSalarySplits() {
-    final raw = _p.getString(_kSalarySplitSaved);
+    final raw = _p.getString(_kSalarySplitSaved) ?? _p.getString(_kSalarySplitSavedV3);
     if (raw == null || raw.trim().isEmpty) return const [];
     final decoded = jsonDecode(raw);
     if (decoded is! List) return const [];

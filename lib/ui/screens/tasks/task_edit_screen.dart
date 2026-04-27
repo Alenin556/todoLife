@@ -19,6 +19,8 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
   TextEditingController? _c;
   bool _initialized = false;
   DateTime? _deadline;
+  String _initialText = '';
+  String? _initialDeadlineKey;
 
   @override
   void initState() {
@@ -33,9 +35,11 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
     final existing = widget.taskId == null
         ? null
         : appState.findTask(widget.kind, widget.taskId!);
+    _initialText = (existing?.text ?? '').trim();
     _c = TextEditingController(text: existing?.text ?? '');
     if (widget.kind == TaskKind.long && existing?.deadlineDateKey != null) {
       _deadline = DateTime.tryParse(existing!.deadlineDateKey!);
+      _initialDeadlineKey = existing.deadlineDateKey;
     }
     _initialized = true;
   }
@@ -56,8 +60,52 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
       );
     }
     final title = widget.taskId == null ? 'Новая задача' : 'Редактирование задачи';
+
+    Future<void> handleBack() async {
+      String? deadlineKey;
+      if (widget.kind == TaskKind.long && _deadline != null) {
+        final d = _deadline!;
+        deadlineKey =
+            '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+      }
+      final dirty =
+          c.text.trim() != _initialText || deadlineKey != _initialDeadlineKey;
+      if (dirty) {
+        final ok = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Изменения не сохранены'),
+            content: const Text('Выйти без сохранения?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Остаться'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Выйти'),
+              ),
+            ],
+          ),
+        );
+        if (ok != true) return;
+      }
+      if (!context.mounted) return;
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/tasks/${widget.kind.routeSegment}');
+      }
+    }
+
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(
+        title: Text(title),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: handleBack,
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),

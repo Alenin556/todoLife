@@ -16,6 +16,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   DateTime _selected = DateTime.now();
+  DateTime _weekAnchor = DateTime.now(); // Monday of visible week
   Timer? _quoteTimer;
   int _quoteIndex = 0;
 
@@ -56,6 +57,10 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    _selected = today;
+    _weekAnchor = _startOfWeek(today);
     _quoteTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (!mounted) return;
       _nextQuote();
@@ -101,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final topSubtitle = 'ПЛАН И ДИСЦИПЛИНА';
 
     final selected = DateTime(_selected.year, _selected.month, _selected.day);
-    final weekStart = _startOfWeek(selected);
+    final weekStart = _startOfWeek(_weekAnchor);
     final weekDays = List.generate(7, (i) => weekStart.add(Duration(days: i)));
     final selectedKey = _dateKey(selected);
     final selectedEvents = appState.eventsForDateKey(selectedKey);
@@ -207,7 +212,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         selected: selected,
                         weekDays: weekDays,
                         hasEvents: (d) => appState.hasEventsForDateKey(_dateKey(d)),
-                        onSelect: (d) => setState(() => _selected = d),
+                        onSelect: (d) => setState(() {
+                          _selected = d;
+                          _weekAnchor = _startOfWeek(d);
+                        }),
+                        onPrevWeek: () => setState(() {
+                          _weekAnchor = _weekAnchor.subtract(const Duration(days: 7));
+                        }),
+                        onNextWeek: () => setState(() {
+                          _weekAnchor = _weekAnchor.add(const Duration(days: 7));
+                        }),
+                        onToday: () => setState(() {
+                          _selected = today;
+                          _weekAnchor = _startOfWeek(today);
+                        }),
                         events: selectedEvents,
                       ),
                     ),
@@ -279,6 +297,9 @@ class _BottomCalendar extends StatelessWidget {
     required this.weekDays,
     required this.hasEvents,
     required this.onSelect,
+    required this.onPrevWeek,
+    required this.onNextWeek,
+    required this.onToday,
     required this.events,
   });
 
@@ -287,6 +308,9 @@ class _BottomCalendar extends StatelessWidget {
   final List<DateTime> weekDays;
   final bool Function(DateTime) hasEvents;
   final ValueChanged<DateTime> onSelect;
+  final VoidCallback onPrevWeek;
+  final VoidCallback onNextWeek;
+  final VoidCallback onToday;
   final List<dynamic> events; // CalendarEvent, but avoid import cycle here.
 
   @override
@@ -299,36 +323,79 @@ class _BottomCalendar extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            dateText,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.42),
-              fontSize: 11,
-              letterSpacing: 2.8,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 10),
           Row(
             children: [
-              for (final d in weekDays) ...[
-                Expanded(
-                  child: _MiniDay(
-                    date: d,
-                    isToday: d.year == today.year &&
-                        d.month == today.month &&
-                        d.day == today.day,
-                    selected: d.year == selected.year &&
-                        d.month == selected.month &&
-                        d.day == selected.day,
-                    hasEvents: hasEvents(d),
-                    onTap: () => onSelect(d),
+              IconButton(
+                onPressed: onPrevWeek,
+                icon: Icon(
+                  Icons.chevron_left,
+                  color: Colors.white.withValues(alpha: 0.75),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  dateText,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.42),
+                    fontSize: 11,
+                    letterSpacing: 2.8,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                if (d != weekDays.last) const SizedBox(width: 8),
-              ],
+              ),
+              TextButton(
+                onPressed: onToday,
+                child: Text(
+                  'СЕГОДНЯ',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.72),
+                    fontSize: 10,
+                    letterSpacing: 2.2,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: onNextWeek,
+                icon: Icon(
+                  Icons.chevron_right,
+                  color: Colors.white.withValues(alpha: 0.75),
+                ),
+              ),
             ],
+          ),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onHorizontalDragEnd: (d) {
+              final v = d.primaryVelocity ?? 0;
+              if (v.abs() < 120) return;
+              if (v > 0) {
+                onPrevWeek();
+              } else {
+                onNextWeek();
+              }
+            },
+            child: Row(
+              children: [
+                for (final d in weekDays) ...[
+                  Expanded(
+                    child: _MiniDay(
+                      date: d,
+                      isToday: d.year == today.year &&
+                          d.month == today.month &&
+                          d.day == today.day,
+                      selected: d.year == selected.year &&
+                          d.month == selected.month &&
+                          d.day == selected.day,
+                      hasEvents: hasEvents(d),
+                      onTap: () => onSelect(d),
+                    ),
+                  ),
+                  if (d != weekDays.last) const SizedBox(width: 8),
+                ],
+              ],
+            ),
           ),
           const SizedBox(height: 10),
           if (events.isNotEmpty)

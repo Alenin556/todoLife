@@ -18,7 +18,13 @@ class AppState extends ChangeNotifier {
   List<TaskItem> _longTasks = const [];
   List<CalendarEvent> _calendarEvents = const [];
   SalarySplitDraft _salarySplitDraft =
-      const SalarySplitDraft(salary: 0, percents: {}, customAmounts: {});
+      const SalarySplitDraft(
+        salary: 0,
+        percents: {},
+        customAmounts: {},
+        mode: SalarySplitMode.percent,
+        manualAmounts: {},
+      );
   List<SalarySplitSaved> _savedSalarySplits = const [];
 
   ThemeMode get themeMode => _themeMode;
@@ -202,6 +208,21 @@ class AppState extends ChangeNotifier {
       salary: salary,
       percents: _salarySplitDraft.percents,
       customAmounts: _salarySplitDraft.customAmounts,
+      mode: _salarySplitDraft.mode,
+      manualAmounts: _salarySplitDraft.manualAmounts,
+    );
+    await _storage.saveSalarySplitDraft(_salarySplitDraft);
+    notifyListeners();
+  }
+
+  Future<void> setSalarySplitMode(SalarySplitMode mode) async {
+    if (_salarySplitDraft.mode == mode) return;
+    _salarySplitDraft = SalarySplitDraft(
+      salary: _salarySplitDraft.salary,
+      percents: _salarySplitDraft.percents,
+      customAmounts: _salarySplitDraft.customAmounts,
+      mode: mode,
+      manualAmounts: _salarySplitDraft.manualAmounts,
     );
     await _storage.saveSalarySplitDraft(_salarySplitDraft);
     notifyListeners();
@@ -218,6 +239,26 @@ class AppState extends ChangeNotifier {
       salary: _salarySplitDraft.salary,
       percents: next,
       customAmounts: _salarySplitDraft.customAmounts,
+      mode: _salarySplitDraft.mode,
+      manualAmounts: _salarySplitDraft.manualAmounts,
+    );
+    await _storage.saveSalarySplitDraft(_salarySplitDraft);
+    notifyListeners();
+  }
+
+  Future<void> setSalaryAmount(String category, double amount) async {
+    final next = Map<String, double>.from(_salarySplitDraft.manualAmounts);
+    if (amount <= 0) {
+      next.remove(category);
+    } else {
+      next[category] = amount;
+    }
+    _salarySplitDraft = SalarySplitDraft(
+      salary: _salarySplitDraft.salary,
+      percents: _salarySplitDraft.percents,
+      customAmounts: _salarySplitDraft.customAmounts,
+      mode: _salarySplitDraft.mode,
+      manualAmounts: next,
     );
     await _storage.saveSalarySplitDraft(_salarySplitDraft);
     notifyListeners();
@@ -232,6 +273,8 @@ class AppState extends ChangeNotifier {
       salary: _salarySplitDraft.salary,
       percents: _salarySplitDraft.percents,
       customAmounts: next,
+      mode: _salarySplitDraft.mode,
+      manualAmounts: _salarySplitDraft.manualAmounts,
     );
     await _storage.saveSalarySplitDraft(_salarySplitDraft);
     notifyListeners();
@@ -244,8 +287,17 @@ class AppState extends ChangeNotifier {
       salary: _salarySplitDraft.salary,
       percents: _salarySplitDraft.percents,
       customAmounts: next,
+      mode: _salarySplitDraft.mode,
+      manualAmounts: _salarySplitDraft.manualAmounts,
     );
     await _storage.saveSalarySplitDraft(_salarySplitDraft);
+    notifyListeners();
+  }
+
+  Future<void> deleteSavedSalarySplit(int savedAtMs) async {
+    _savedSalarySplits =
+        _savedSalarySplits.where((e) => e.savedAtMs != savedAtMs).toList(growable: false);
+    await _storage.saveSavedSalarySplits(_savedSalarySplits);
     notifyListeners();
   }
 
