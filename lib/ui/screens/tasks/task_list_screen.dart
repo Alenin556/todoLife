@@ -68,11 +68,49 @@ class TaskListScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      kind == TaskKind.daily
-                          ? _todayLabel()
-                          : kind.label,
-                      style: Theme.of(context).textTheme.headlineSmall,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            kind == TaskKind.daily ? _todayLabel() : kind.label,
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Сбросить все',
+                          onPressed: items.isEmpty
+                              ? null
+                              : () async {
+                                  final yes = await showDialog<bool>(
+                                    context: context,
+                                    builder: (context) => AlertDialog(
+                                      title: const Text('Сбросить все задачи?'),
+                                      content: Text(
+                                        kind == TaskKind.daily
+                                            ? 'Будут удалены все задачи на день.'
+                                            : 'Будут удалены все долгосрочные задачи.',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.of(context).pop(false),
+                                          child: const Text('Отмена'),
+                                        ),
+                                        FilledButton(
+                                          onPressed: () =>
+                                              Navigator.of(context).pop(true),
+                                          child: const Text('Сбросить'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                  if (yes == true) {
+                                    await appState.clearTasks(kind);
+                                  }
+                                },
+                          icon: const Icon(Icons.delete_sweep_outlined),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     Text('Выполнено: $doneCount из ${items.length}'),
@@ -170,31 +208,48 @@ class _TaskTile extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: onEdit,
-          onLongPress: () async {
-            final yes = await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Удалить задачу?'),
-                content: Text(item.text),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    child: const Text('Отмена'),
-                  ),
-                  FilledButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    child: const Text('Удалить'),
-                  ),
-                ],
+          child: Row(
+            children: [
+              Checkbox(
+                value: item.done,
+                onChanged: (v) => onToggle(v ?? false),
               ),
-            );
-            if (yes == true) onDelete();
-          },
-          child: CheckboxListTile(
-            value: item.done,
-            onChanged: (v) => onToggle(v ?? false),
-            title: Text(item.text),
-            controlAffinity: ListTileControlAffinity.leading,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text(item.text),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Редактировать',
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined),
+              ),
+              IconButton(
+                tooltip: 'Удалить',
+                onPressed: () async {
+                  final yes = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Удалить задачу?'),
+                      content: Text(item.text),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text('Отмена'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          child: const Text('Удалить'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (yes == true) onDelete();
+                },
+                icon: const Icon(Icons.delete_outline),
+              ),
+            ],
           ),
         ),
       ),

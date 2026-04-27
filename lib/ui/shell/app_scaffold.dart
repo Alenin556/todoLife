@@ -31,30 +31,35 @@ class AppScaffold extends StatelessWidget {
                 ),
               ),
               _NavTile(
+                tileKey: const ValueKey('nav_daily'),
                 selected: _isSelected('/tasks/daily'),
                 icon: Icons.today_outlined,
                 title: 'Задачи на день',
                 onTap: () => _go(context, '/tasks/daily'),
               ),
               _NavTile(
+                tileKey: const ValueKey('nav_long'),
                 selected: _isSelected('/tasks/long'),
                 icon: Icons.event_note_outlined,
                 title: 'Долгосрочные задачи',
                 onTap: () => _go(context, '/tasks/long'),
               ),
               _NavTile(
+                tileKey: const ValueKey('nav_salary'),
                 selected: _isSelected('/finance/salary'),
                 icon: Icons.account_balance_wallet_outlined,
                 title: 'Подсчет финансов (ЗП)',
                 onTap: () => _go(context, '/finance/salary'),
               ),
               _NavTile(
+                tileKey: const ValueKey('nav_deposit'),
                 selected: _isSelected('/finance/deposit'),
                 icon: Icons.savings_outlined,
                 title: 'Подсчет вкладов',
                 onTap: () => _go(context, '/finance/deposit'),
               ),
               _NavTile(
+                tileKey: const ValueKey('nav_calendar'),
                 selected: _isSelected('/calendar'),
                 icon: Icons.calendar_month_outlined,
                 title: 'Календарь',
@@ -62,6 +67,7 @@ class AppScaffold extends StatelessWidget {
               ),
               const Divider(),
               _NavTile(
+                tileKey: const ValueKey('nav_quotes'),
                 selected: _isSelected('/'),
                 icon: Icons.auto_awesome_outlined,
                 title: 'Мотивация',
@@ -108,12 +114,14 @@ class AppScaffold extends StatelessWidget {
 
 class _NavTile extends StatelessWidget {
   const _NavTile({
+    required this.tileKey,
     required this.selected,
     required this.icon,
     required this.title,
     required this.onTap,
   });
 
+  final Key tileKey;
   final bool selected;
   final IconData icon;
   final String title;
@@ -122,6 +130,7 @@ class _NavTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
+      key: tileKey,
       leading: Icon(icon),
       title: Text(title),
       selected: selected,

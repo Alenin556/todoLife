@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences_windows/shared_preferences_windows.dart';
 
 import 'dart:io';
@@ -9,6 +11,10 @@ import 'services/user_storage.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Some platforms resolve Russian locale as `ru`, others as `ru_RU`.
+  await initializeDateFormatting('ru');
+  await initializeDateFormatting('ru_RU');
+  Intl.defaultLocale = 'ru_RU';
   if (Platform.isWindows) {
     SharedPreferencesWindows.registerWith();
   }

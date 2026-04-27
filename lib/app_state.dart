@@ -81,6 +81,10 @@ class AppState extends ChangeNotifier {
     await _setTasks(kind, updated);
   }
 
+  Future<void> clearTasks(TaskKind kind) async {
+    await _setTasks(kind, const []);
+  }
+
   Future<void> upsertTask(TaskKind kind,
       {String? id, required String text}) async {
     final now = DateTime.now().millisecondsSinceEpoch;

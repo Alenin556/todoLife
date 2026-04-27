@@ -72,6 +72,22 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
 
   double _amount(double salary, int percent) => salary * percent / 100.0;
 
+  Map<String, double> _customExceedings({
+    required double salary,
+    required double allocatedByPercents,
+    required Map<String, double> customAmounts,
+  }) {
+    var remaining = salary - allocatedByPercents;
+    final exceedings = <String, double>{};
+    for (final e in customAmounts.entries) {
+      remaining -= e.value;
+      if (remaining < 0) {
+        exceedings[e.key] = remaining.abs();
+      }
+    }
+    return exceedings;
+  }
+
   Future<void> _confirmSalary(double salary) async {
     final appState = AppStateScope.of(context);
     final ok = await showDialog<bool>(
@@ -111,7 +127,14 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
     final percents = draft.percents;
     final totalPercent = _totalPercent(percents);
     final allocated = _amount(draft.salary, totalPercent);
-    final diff = draft.salary - allocated;
+    final customTotal =
+        draft.customAmounts.values.fold<double>(0, (a, b) => a + b);
+    final diff = draft.salary - allocated - customTotal;
+    final exceedings = _customExceedings(
+      salary: draft.salary,
+      allocatedByPercents: allocated,
+      customAmounts: draft.customAmounts,
+    );
 
     return SafeArea(
       child: ListView(
@@ -195,7 +218,10 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
                 onPressed: () async {
                   final res = await showDialog<_CustomCategoryDraft>(
                     context: context,
-                    builder: (context) => const _AddCategoryDialog(),
+                    builder: (context) => _AddCategoryDialog(
+                      remaining: (draft.salary - allocated) - customTotal,
+                      formatMoney: _fmt,
+                    ),
                   );
                   if (res == null) return;
                   await appState.addCustomSalaryCategory(res.name, res.amount);
@@ -208,10 +234,53 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
               Card(
                 child: ListTile(
                   title: Text(e.key),
-                  subtitle: Text(_fmt(e.value)),
+                  subtitle: Text(
+                    exceedings.containsKey(e.key)
+                        ? '${_fmt(e.value)}  (превышение: ${_fmt(exceedings[e.key]!)})'
+                        : _fmt(e.value),
+                    style: TextStyle(
+                      color: exceedings.containsKey(e.key)
+                          ? Theme.of(context).colorScheme.error
+                          : null,
+                      fontWeight: exceedings.containsKey(e.key)
+                          ? FontWeight.w600
+                          : null,
+                    ),
+                  ),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete_outline),
                     onPressed: () => appState.deleteCustomSalaryCategory(e.key),
+                  ),
+                ),
+              ),
+            if (exceedings.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Card(
+                  color: Theme.of(context).colorScheme.errorContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Превышение остатка',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: Theme.of(context).colorScheme.onErrorContainer,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        for (final e in exceedings.entries)
+                          Text(
+                            '${e.key}: +${_fmt(e.value)}',
+                            style: TextStyle(
+                              color:
+                                  Theme.of(context).colorScheme.onErrorContainer,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -330,7 +399,13 @@ class _CustomCategoryDraft {
 }
 
 class _AddCategoryDialog extends StatefulWidget {
-  const _AddCategoryDialog();
+  const _AddCategoryDialog({
+    required this.remaining,
+    required this.formatMoney,
+  });
+
+  final double remaining;
+  final String Function(double) formatMoney;
 
   @override
   State<_AddCategoryDialog> createState() => _AddCategoryDialogState();
@@ -362,6 +437,14 @@ class _AddCategoryDialogState extends State<_AddCategoryDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Остаток сейчас: ${widget.formatMoney(widget.remaining)}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          const SizedBox(height: 8),
           TextField(
             controller: _name,
             decoration: const InputDecoration(
