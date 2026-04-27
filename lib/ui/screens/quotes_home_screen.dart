@@ -8,11 +8,10 @@ class QuotesHomeScreen extends StatefulWidget {
 }
 
 class _Quote {
-  const _Quote({required this.text, required this.author, this.year});
+  const _Quote({required this.text, required this.author});
 
   final String text;
   final String author;
-  final int? year;
 }
 
 class _QuotesHomeScreenState extends State<QuotesHomeScreen> {
@@ -32,7 +31,6 @@ class _QuotesHomeScreenState extends State<QuotesHomeScreen> {
     _Quote(
       text: 'Счастье твоей жизни зависит от качества твоих мыслей.',
       author: 'Марк Аврелий',
-      year: 180,
     ),
     _Quote(
       text: 'Дисциплина важнее мотивации.',
@@ -55,7 +53,7 @@ class _QuotesHomeScreenState extends State<QuotesHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final q = _quotes[_i];
-    final authorLine = q.year == null ? q.author : '${q.author}, ${q.year}';
+    final authorLine = q.author;
 
     return SafeArea(
       child: Padding(

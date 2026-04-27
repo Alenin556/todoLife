@@ -7,8 +7,8 @@ enum _PickerMode { hours, minutes }
 /// A "reference-like" 12-hour time picker with:
 /// - numeric inputs for hour/minute
 /// - AM/PM toggle
-/// - tappable clockface numbers (hours) and 5-min marks (minutes)
-/// - hands follow inputs/taps
+/// - tappable clockface (hours / 5‑minute steps) in the active mode; mode follows focused field
+/// - hand with arrowhead follows the values from inputs and taps
 class RealisticTimePickerDialog extends StatefulWidget {
   const RealisticTimePickerDialog({
     super.key,
@@ -134,7 +134,7 @@ class _RealisticTimePickerDialogState extends State<RealisticTimePickerDialog> {
         _hCtrl.text = _pad2(_hour12);
         _hCtrl.selection =
             TextSelection.collapsed(offset: _hCtrl.text.length);
-        _mFocus.requestFocus(); // typical UX: go minutes after hour tap
+        _mFocus.requestFocus();
       } else {
         _minute = v.clamp(0, 59);
         _minute = _roundToStep(_minute, widget.minuteStep);
@@ -262,7 +262,6 @@ class _RealisticTimePickerDialogState extends State<RealisticTimePickerDialog> {
                   onSurface: onSurface,
                   surface: surface,
                   onSelect: _onClockValueSelected,
-                  onModeSwitch: (m) => setState(() => _mode = m),
                 ),
               ),
               const SizedBox(height: 12),
@@ -389,7 +388,6 @@ class _ClockFace extends StatelessWidget {
     required this.onSurface,
     required this.surface,
     required this.onSelect,
-    required this.onModeSwitch,
   });
 
   final _PickerMode mode;
@@ -400,7 +398,6 @@ class _ClockFace extends StatelessWidget {
   final Color onSurface;
   final Color surface;
   final ValueChanged<int> onSelect;
-  final ValueChanged<_PickerMode> onModeSwitch;
 
   List<int> _minuteMarks() {
     final step = minuteStep <= 0 ? 5 : minuteStep;
@@ -416,6 +413,7 @@ class _ClockFace extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, c) {
         return GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTapDown: (d) {
             final box = context.findRenderObject() as RenderBox?;
             if (box == null) return;
@@ -428,14 +426,18 @@ class _ClockFace extends StatelessWidget {
             final radius = math.min(size.width, size.height) * 0.42;
             if (dist < radius * 0.55 || dist > radius * 1.2) return;
 
-            // Angle: -pi/2 at 12 o'clock, increasing clockwise.
+            // Angle: 12 o'clock = -pi/2, clockwise increases.
             var ang = math.atan2(dy, dx);
             ang = ang - (-math.pi / 2);
-            while (ang < 0) ang += math.pi * 2;
-            while (ang >= math.pi * 2) ang -= math.pi * 2;
+            while (ang < 0) {
+              ang += math.pi * 2;
+            }
+            while (ang >= math.pi * 2) {
+              ang -= math.pi * 2;
+            }
 
             if (mode == _PickerMode.hours) {
-              final idx = ((ang / (math.pi * 2)) * 12).round() % 12; // 0..11
+              final idx = ((ang / (math.pi * 2)) * 12).round() % 12;
               final h = idx == 0 ? 12 : idx;
               onSelect(h);
             } else {
@@ -454,38 +456,6 @@ class _ClockFace extends StatelessWidget {
               primary: primary,
               onSurface: onSurface,
               surface: surface,
-            ),
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextButton(
-                    onPressed: () => onModeSwitch(_PickerMode.hours),
-                    child: Text(
-                      'Часы',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: mode == _PickerMode.hours
-                            ? primary
-                            : onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: () => onModeSwitch(_PickerMode.minutes),
-                    child: Text(
-                      'Минуты',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: mode == _PickerMode.minutes
-                            ? primary
-                            : onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
         );
@@ -540,7 +510,7 @@ class _ClockPainter extends CustomPainter {
       labels = List.generate(12, (i) => '${i == 0 ? 12 : i}');
     } else {
       final step = minuteStep <= 0 ? 5 : minuteStep;
-      labels = List.generate(60 ~/ step, (i) => '${(i * step).toString().padLeft(2, '0')}');
+      labels = List.generate(60 ~/ step, (i) => (i * step).toString().padLeft(2, '0'));
     }
 
     final count = labels.length;
@@ -565,25 +535,54 @@ class _ClockPainter extends CustomPainter {
       textPainter.paint(canvas, off);
     }
 
-    // Hand
+    // Hand: shaft + filled arrowhead at the tip
     final angle = mode == _PickerMode.hours
         ? ((hour12 % 12) + (minute / 60.0)) * (math.pi * 2 / 12) - math.pi / 2
         : (minute / 60.0) * (math.pi * 2) - math.pi / 2;
 
+    final ux = math.cos(angle);
+    final uy = math.sin(angle);
+    final handLen = radius * 0.62;
+    final arrowLen = (radius * 0.10).clamp(7.0, 14.0);
+    final baseMid = Offset(
+      center.dx + ux * (handLen - arrowLen),
+      center.dy + uy * (handLen - arrowLen),
+    );
+    final tip = Offset(
+      center.dx + ux * handLen,
+      center.dy + uy * handLen,
+    );
+    final perp = Offset(-uy, ux);
+    final halfW = arrowLen * 0.48;
+    final b1 = baseMid + perp * halfW;
+    final b2 = baseMid - perp * halfW;
+
     final handPaint = Paint()
       ..color = primary
-      ..strokeWidth = 3.5
-      ..strokeCap = StrokeCap.round;
+      ..strokeWidth = 3.2
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    canvas.drawLine(center, baseMid, handPaint);
 
-    final handLen = radius * 0.62;
-    final end = Offset(
-      center.dx + math.cos(angle) * handLen,
-      center.dy + math.sin(angle) * handLen,
-    );
-    canvas.drawLine(center, end, handPaint);
+    final arrowPath = Path()
+      ..moveTo(tip.dx, tip.dy)
+      ..lineTo(b1.dx, b1.dy)
+      ..lineTo(b2.dx, b2.dy)
+      ..close();
+    final fillPaint = Paint()
+      ..color = primary
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(arrowPath, fillPaint);
 
+    // Hub + rim for a more clock-like look
+    final hubR = 6.0;
+    final hubRim = Paint()
+      ..color = primary.withValues(alpha: 0.45)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawCircle(center, hubR + 0.5, hubRim);
     final dotPaint = Paint()..color = primary;
-    canvas.drawCircle(center, 5.5, dotPaint);
+    canvas.drawCircle(center, hubR, dotPaint);
   }
 
   @override

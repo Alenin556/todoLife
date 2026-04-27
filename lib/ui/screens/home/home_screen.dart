@@ -7,6 +7,19 @@ import '../../scope/app_state_scope.dart';
 import '../calendar/calendar_screen.dart';
 import '../tasks/task_list_screen.dart';
 
+/// Цитата для главного экрана: автор и источник текста.
+class _ScreenQuote {
+  const _ScreenQuote({
+    required this.text,
+    required this.author,
+    this.source,
+  });
+
+  final String text;
+  final String author;
+  final String? source;
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -20,128 +33,339 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _quoteTimer;
   int _quoteIndex = 0;
 
-  static const _quotes = <({String text, String author})>[
-    (
-      text:
-          'Не экономьте то, что осталось после трат — тратьте то, что осталось после сбережений.',
-      author: 'Уоррен Баффет',
+  /// Стоики, коучи, бизнес-спикеры, мысли о деньгах и об отношении к жизни.
+  static const _quotes = <_ScreenQuote>[
+    // ——— Зенон, Клеанф, Хрисипп (раннее стоа, чаже фрагменты) ———
+    _ScreenQuote(
+      text: 'Цель благо́й жизни — жить в согласии с природой.',
+      author: 'Зенон Китийский',
+      source: 'дош. у Диогена Лэртия, VII, 87; ок. 300 г. до н.э.',
     ),
-    (
-      text: 'Богат не тот, кто много имеет, а тот, кому мало нужно.',
-      author: 'Эпикур',
+    _ScreenQuote(
+      text: 'Повсюду божественен закон, ведь он правит: так учит стоа о логосе вещей.',
+      author: 'Клеанф',
+      source: '«Гимн Зевсу»; ок. 250 г. до н.э. (смысловой перелож)',
     ),
-    (
-      text: 'Сначала скажи себе, каким ты хочешь быть, и затем делай, что нужно.',
+    _ScreenQuote(
+      text: 'Мудрость в том, чтоб воли своей владеть, чем судьбою не владея.',
+      author: 'Хрисипп',
+      source: 'фр. «О природе» (SVF), ок. 230 г. до н.э.',
+    ),
+    // ——— Мусоний Руф ———
+    _ScreenQuote(
+      text: 'Труд — это упражнение добродетели, а праздное тело питает праздную душу.',
+      author: 'Мусоний Руф',
+      source: '«О том, что труд — не плохо», бес. XI',
+    ),
+    _ScreenQuote(
+      text: 'Философия указывает, что вредно и что нет, а подчинение этому — ваш выбор.',
+      author: 'Мусоний Руф',
+      source: '«Беседы», об ответе за суждения',
+    ),
+    // ——— Гиерокл (стоа II в.) ———
+    _ScreenQuote(
+      text: 'Распознавай, что в твоей воле, а что вне её: круги заботы (οἰκείωσις) располагай в порядке важного.',
+      author: 'Гиерокл',
+      source: '«О прокладке кругов»; II в. н.э.',
+    ),
+    // ——— Сенека ———
+    _ScreenQuote(
+      text: 'Жизнь длинна, если уметь ею распоряжаться; если растранжиривать — она коротка, хоть веков много.',
+      author: 'Луций Анней Сенека',
+      source: '«О краткости жизни»',
+    ),
+    _ScreenQuote(
+      text: 'Мы страдаем чаще в воображении, чем в действительности.',
+      author: 'Луций Анней Сенека',
+      source: 'Письмо к Луцилию, 13',
+    ),
+    _ScreenQuote(
+      text: 'Судьба ведёт согласных и тащит несогласного.',
+      author: 'Луций Анней Сенека',
+      source: 'Письмо к Луцилию, 107',
+    ),
+    _ScreenQuote(
+      text: 'Ничто в нас, как неуменьшимая свобода — отнести к добру, что встретилось благополучно.',
+      author: 'Луций Анней Сенека',
+      source: 'Письмо к Луцилию, 31 (по смыслу о душевном покое)',
+    ),
+    _ScreenQuote(
+      text: 'Сегодня — часть твоей жизни, не скупись вложить в неё ясный выбор — такова стоическая ценность сиюминутного.',
+      author: 'Луций Анней Сенека',
+      source: 'Письмо к Луцилию, 1 (о цене дня)',
+    ),
+    // ——— Эпиктет (Арриан) ———
+    _ScreenQuote(
+      text: 'В твоей власти суждение, порыв, стремление, отклонение — остальное не в твоей власти.',
       author: 'Эпиктет',
+      source: '«Руководство» (Энхиридион), 1',
     ),
-    (
-      text: 'Счастье твоей жизни зависит от качества твоих мыслей.',
+    _ScreenQuote(
+      text: 'Сначала скажи себе, кем хочешь быть; потом по необходимости поступай.',
+      author: 'Эпиктет',
+      source: '«Руководство» (Энхиридион), 23 (по смыслу)',
+    ),
+    _ScreenQuote(
+      text: 'Не в вещи дело, а в суждениях: что не мешает самой вещи, а мешает — взгляд на вещь.',
+      author: 'Эпиктет',
+      source: '«Руководство» (Энхиридион), 5',
+    ),
+    _ScreenQuote(
+      text: 'Проси не чтоб совпадало с твоей волею, а чтоб твоя воля совпадала с природой вещей.',
+      author: 'Эпиктет',
+      source: '«Руководство» (Энхиридион), 8',
+    ),
+    _ScreenQuote(
+      text: 'Свободен — кто вынуждение не путает с насилием, а внутри избирает согласие с разумом.',
+      author: 'Эпиктет',
+      source: '«Беседы» (Диссертации), I, 1 (по смыслу свободы)',
+    ),
+    _ScreenQuote(
+      text: 'Пока хочу лишь то, к чему бог, природа и мой разум готов меня, — я в покое.',
+      author: 'Эпиктет',
+      source: '«Беседы», II, 5 (о желании, парфр.)',
+    ),
+    // ——— Марк Аврелий ———
+    _ScreenQuote(
+      text: 'Власть над своими мыслями — вот что делает блаженство жизни.',
       author: 'Марк Аврелий',
+      source: '«Размышления», IV, 3',
     ),
-    (
-      text: 'Дисциплина важнее мотивации.',
-      author: 'Народная мудрость',
+    _ScreenQuote(
+      text: 'Препятствие к действию — ещё и способ, как к нему идти: что препятствует, превращается в пользу к делу.',
+      author: 'Марк Аврелий',
+      source: '«Размышления», V, 20',
     ),
-    (
-      text: 'Успех — это сумма небольших усилий, повторяемых изо дня в день.',
-      author: 'Роберт Колльер',
+    _ScreenQuote(
+      text: 'Утром: сегодня встречу самолюбивых, коварных, слепо ревнивых; они виновны сами, что не ведают, где добро.',
+      author: 'Марк Аврелий',
+      source: '«Размышления», II, 1 (утр. нравоучение)',
     ),
-    (text: 'Начни с малого — но начни сегодня.', author: 'todoLife'),
-    (text: 'Делай важное первым.', author: 'todoLife'),
-    (text: 'Системы побеждают настроение.', author: 'todoLife'),
-    (text: 'Планируй, чтобы жить легче.', author: 'todoLife'),
-    (text: 'Не жди идеального момента — создай его.', author: 'todoLife'),
-    (text: 'Один шаг в день — это тоже путь.', author: 'todoLife'),
-    (text: 'Дисциплина — это забота о будущем себе.', author: 'todoLife'),
-    (text: 'Стабильность сильнее рывков.', author: 'todoLife'),
-    (text: 'Побеждает тот, кто возвращается к делу.', author: 'todoLife'),
-    (text: 'Маленькие привычки строят большие результаты.', author: 'todoLife'),
-    (text: 'Доводи до конца хотя бы одну вещь.', author: 'todoLife'),
-    (text: 'Сделай проще. Сделай сейчас.', author: 'todoLife'),
-    (text: 'День — это единица победы.', author: 'todoLife'),
-    (text: 'Фокус — это умение говорить «нет».', author: 'Стив Джобс'),
-    (text: 'Будущее зависит от того, что ты делаешь сегодня.', author: 'Махатма Ганди'),
-    (text: 'Сложные цели состоят из простых действий.', author: 'todoLife'),
-    (text: 'Сначала порядок — потом скорость.', author: 'todoLife'),
-    (text: 'Стабильно — значит надёжно.', author: 'todoLife'),
-    (text: 'Действуй так, будто мотивация уже пришла.', author: 'todoLife'),
-    (text: 'Не сравнивай. Улучшай.', author: 'todoLife'),
-    (text: 'Сделано — лучше, чем идеально.', author: 'Народная мудрость'),
-    (text: 'Сила в привычке.', author: 'todoLife'),
-    (text: 'Управляй временем, а не настроение — собой.', author: 'todoLife'),
-    (text: 'Каждый чек-лист — это ясность.', author: 'todoLife'),
-    (text: 'Сначала здоровье, затем задачи.', author: 'todoLife'),
-    (text: 'Тишина — это тоже прогресс.', author: 'todoLife'),
-    (text: 'Не усложняй то, что можно выполнить.', author: 'todoLife'),
-    (text: 'Задачи на бумаге — меньше тревоги в голове.', author: 'todoLife'),
-    (text: 'Отдых — часть дисциплины.', author: 'todoLife'),
-    (text: 'Делай по чуть-чуть, но каждый день.', author: 'todoLife'),
-    (text: 'Накопление — это стратегия, не жертва.', author: 'todoLife'),
-    (text: 'Бюджет — это свобода, а не ограничения.', author: 'todoLife'),
-    (text: 'Твои деньги должны работать на тебя.', author: 'todoLife'),
-    (text: 'Сначала заплати себе.', author: 'Народная мудрость'),
-    (text: 'Контроль начинается с учёта.', author: 'todoLife'),
-    (text: 'Считай — и увидишь рост.', author: 'todoLife'),
-    (text: 'Простые правила побеждают сложные планы.', author: 'todoLife'),
-    (text: 'Рутина — это форма силы.', author: 'todoLife'),
-    (text: 'Ничего не меняется, если ничего не менять.', author: 'todoLife'),
-    (text: 'Сделай сегодня то, за что завтра скажешь спасибо.', author: 'todoLife'),
-    (text: 'Важное редко бывает срочным.', author: 'Дуайт Эйзенхауэр'),
-    (text: 'Вдохновение приходит в процессе.', author: 'todoLife'),
-    (text: 'Сконцентрируйся на следующем шаге.', author: 'todoLife'),
-    (text: 'Ты — это то, что ты повторяешь.', author: 'Аристотель'),
-    (text: 'Каждая задача — кирпич в твоём будущем.', author: 'todoLife'),
-    (text: 'Упорядочи день — и появится энергия.', author: 'todoLife'),
-    (text: 'Сделай минимум — и это уже победа.', author: 'todoLife'),
-    (text: 'Пять минут — тоже время.', author: 'todoLife'),
-    (text: 'Стабильный темп — лучший темп.', author: 'todoLife'),
-    (text: 'Сомнение не делает дело.', author: 'todoLife'),
-    (text: 'План без действия — просто желание.', author: 'todoLife'),
-    (text: 'Действие лечит страх.', author: 'todoLife'),
-    (text: 'Лучший тайм-менеджмент — приоритеты.', author: 'todoLife'),
-    (text: 'Сначала главное — потом остальное.', author: 'todoLife'),
-    (text: 'Окружай себя ясностью.', author: 'todoLife'),
-    (text: 'Не откладывай лёгкое: оно становится тяжёлым.', author: 'todoLife'),
-    (text: 'Сделай один звонок. Напиши одно сообщение. Сдвинь дело.', author: 'todoLife'),
-    (text: 'Твоя цель любит регулярность.', author: 'todoLife'),
-    (text: 'Меньше шума — больше результата.', author: 'todoLife'),
-    (text: 'Сосредоточься на том, что можешь контролировать.', author: 'todoLife'),
-    (text: 'Дисциплина — это выбор.', author: 'todoLife'),
-    (text: 'Отмечай выполненное — мозг любит прогресс.', author: 'todoLife'),
-    (text: 'Список дел — это карта, а не приговор.', author: 'todoLife'),
-    (text: 'Если устал — замедлись, но не останавливайся.', author: 'todoLife'),
-    (text: 'День без плана — день на автопилоте.', author: 'todoLife'),
-    (text: 'Чистая голова начинается с чистого списка.', author: 'todoLife'),
-    (text: 'Твоя дисциплина — твоя опора.', author: 'todoLife'),
-    (text: 'Сначала постоянство, потом скорость.', author: 'todoLife'),
-    (text: 'Сделай один маленький шаг прямо сейчас.', author: 'todoLife'),
-    (text: 'Побеждает тот, кто не сдаётся на простом.', author: 'todoLife'),
-    (text: 'Умение заканчивать — суперсила.', author: 'todoLife'),
-    (text: 'Долгосрочно выигрывает терпеливый.', author: 'todoLife'),
-    (text: 'Сначала фундамент, потом вершины.', author: 'todoLife'),
-    (text: 'Сократи до сущности.', author: 'todoLife'),
-    (text: 'Решение — это действие.', author: 'todoLife'),
-    (text: 'Сделай сегодня на 1% лучше.', author: 'todoLife'),
-    (text: 'Сильные привычки — тихие привычки.', author: 'todoLife'),
-    (text: 'Записывай: память любит подводить.', author: 'todoLife'),
-    (text: 'Время — твой главный актив.', author: 'todoLife'),
-    (text: 'Свобода — это порядок в делах и деньгах.', author: 'todoLife'),
-    (text: 'Если задача пугает — разбей её.', author: 'todoLife'),
-    (text: 'Минимум действий > максимум размышлений.', author: 'todoLife'),
-    (text: 'Дедлайн — это форма заботы о результате.', author: 'todoLife'),
-    (text: 'Уважай своё время: ставь границы.', author: 'todoLife'),
-    (text: 'Не нужно всё успеть — нужно успеть важное.', author: 'todoLife'),
-    (text: 'Один список. Один день. Один шаг.', author: 'todoLife'),
-    (text: 'Сначала ясность, потом мотивация.', author: 'todoLife'),
-    (text: 'Проверяй план утром, благодарь себя вечером.', author: 'todoLife'),
-    (text: 'Твои действия — твой характер.', author: 'todoLife'),
-    (text: 'Привычка экономить — привычка побеждать.', author: 'todoLife'),
-    (text: 'Сбережения — это уважение к будущему.', author: 'todoLife'),
-    (text: 'Где внимание — там рост.', author: 'todoLife'),
-    (text: 'Порядок — это роскошь, доступная каждому.', author: 'todoLife'),
-    (text: 'Будь верен процессу.', author: 'todoLife'),
-    (text: 'Путь строится шагами.', author: 'todoLife'),
-    (text: 'Работай с тем, что есть — и станет больше.', author: 'todoLife'),
+    _ScreenQuote(
+      text: 'Скоро и ты, и весь, кого величаешь, — прах, чуть погодя и имя-то вспомнят мало кто.',
+      author: 'Марк Аврелий',
+      source: '«Размышления», VIII, 21 (о тленности славы)',
+    ),
+    _ScreenQuote(
+      text: 'Ты можешь жить, как велит природа, если внутри соглашаешься с ней, а не с обидой.',
+      author: 'Марк Аврелий',
+      source: '«Размышления», V, 1 (о согласии с духом дела)',
+    ),
+    _ScreenQuote(
+      text: 'Душа унижается, если отдаёт внешнему, что внутренняя воля должна хранить.',
+      author: 'Марк Аврелий',
+      source: '«Размышления», VIII, 47',
+    ),
+    _ScreenQuote(
+      text: 'Доброе дело, сделанное в тайне, не менее доблестно, чем в глазах толпы.',
+      author: 'Марк Аврелий',
+      source: '«Размышления», X, 8 (по смыслу о добродетели)',
+    ),
+    _ScreenQuote(
+      text: 'Ступь за ступенью, без спешки: хватит пены — достаточно воли и трезвого суждения.',
+      author: 'Марк Аврелий',
+      source: '«Размышления» (смысл стоического неспешащего порядка)',
+    ),
+    // ——— Коучи, наставники ———
+    _ScreenQuote(
+      text: 'Успех — это спокойное уверенное знание, что ты вложил в жизнь всё, чтобы стать лучшим, каким можешь быть.',
+      author: 'Джон Вуден',
+      source: 'тренер UCLA; пирамида успеха, интервью',
+    ),
+    _ScreenQuote(
+      text: 'Побеждает не сила, а воля: не важен размер, важен характер.',
+      author: 'Винс Ломбарди',
+      source: 'NFL; публичные речи, 1960-е (по смыслу)',
+    ),
+    _ScreenQuote(
+      text: 'Команда, которая доверяет друг другу, бьётся за общую ценность, а не за личный процент в статистике.',
+      author: 'Фил Джексон',
+      source: 'книга «11 колец»; опыт в NBA',
+    ),
+    _ScreenQuote(
+      text: 'Тренер велит правде о прогрессе, не ободрению: ловите правду, не похвалу — так растёте.',
+      author: 'Билл Кэмпбелл',
+      source: 'наставник в Кремниевой долине; «Trillion Dollar Coach»',
+    ),
+    _ScreenQuote(
+      text: 'Высшая мера власти — не власть над другими, а власть над собой: выбирайте реакции.',
+      author: 'Тони Роббинс',
+      source: 'семинары; «Разбуди великана внутри»',
+    ),
+    // ——— Бизнес-ораторы, лидерство ———
+    _ScreenQuote(
+      text: 'Фокус — это умение сказать «нет» сотням хороших вещей ради пары великолепных.',
+      author: 'Стив Джобс',
+      source: 'выпускная речь в Стэнфорде, 2005',
+    ),
+    _ScreenQuote(
+      text: 'Покупают не продукт, а то, ради чего он существует: начинай с «зачем».',
+      author: 'Саймон Синек',
+      source: '«Start With Why»; золотой круг, TED',
+    ),
+    _ScreenQuote(
+      text: 'Радикальная правда + радикальная прозрачность: так выдерживают кризисы, а не скрывают их.',
+      author: 'Рэй Далио',
+      source: '«Принципы: жизнь и работа»',
+    ),
+    _ScreenQuote(
+      text: 'День первый, а не день второй: в организации должна оставаться любопытная новичковая душа.',
+      author: 'Джефф Безос',
+      source: 'письмо акционерам Amazon, концепция Day 1',
+    ),
+    _ScreenQuote(
+      text: 'Ошибка, признанная и исправленная, сильнее сотни прикрытых: культура учится на слабых местах.',
+      author: 'Сатья Наделла',
+      source: 'книга «Обнови», Microsoft',
+    ),
+    _ScreenQuote(
+      text: 'Успех — это обычно следствие применения основных вещей, а не тайн.',
+      author: 'Джим Рон',
+      source: 'аудиосеминары, 1980–90-е (по смыслу)',
+    ),
+    // ——— Финансы, инвестиции, учёт ———
+    _ScreenQuote(
+      text: 'Цена — что вы платите, ценность — что получаете: инвестиция в ясное различение окупается вечно.',
+      author: 'Уоррен Баффет',
+      source: 'письмо акционерам Berkshire Hathaway',
+    ),
+    _ScreenQuote(
+      text: 'Не копи после расходов — откладывай до расходов: сначала «заплати себе».',
+      author: 'Джордж С. Клейсон',
+      source: '«Самый богатый человек в Вавилоне»',
+    ),
+    _ScreenQuote(
+      text: 'Рынок — устройство переноса денег от нетерпеливых к терпеливым.',
+      author: 'Уоррен Баффет',
+      source: 'публичные выступления; цит. изложение',
+    ),
+    _ScreenQuote(
+      text: 'Богатство — то, чего остаётся после вычитания внешнего: свобода от привязанности к деньгам стоит дороже счёта.',
+      author: 'Навал Равикант',
+      source: 'The Almanack of Naval Ravikant',
+    ),
+    _ScreenQuote(
+      text: 'Инвестиции должны наиболее разумно, а не наиболее волнующе выглядеть: ведите сбережения скучно и регулярно.',
+      author: 'Морган Хаусел',
+      source: '«Психология денег» (The Psychology of Money)',
+    ),
+    // ——— Жизнь, смысл, отношение ———
+    _ScreenQuote(
+      text: 'Всё можно у человека отобрать, кроме одного — последнего свободного выбора: как отреагировать.',
+      author: 'Виктор Франкл',
+      source: '«…сказать жизни „да“» (логотерапия)',
+    ),
+    _ScreenQuote(
+      text: 'Пока не примете ответственность за свою жизнь, вас везут, а не вы ведёте.',
+      author: 'Эрик Берн',
+      source: '«Игры, в которые играют люди» (по смыслу ответственного «Я»)',
+    ),
+    _ScreenQuote(
+      text: 'Счастье — не цель, а побочный продукт осмысленного труда и внимания к реальным ценностям.',
+      author: 'Виктор Франкл',
+      source: '«Человек в поисках смысла»; эссе',
+    ),
+    _ScreenQuote(
+      text: 'Пока сравниваешь с другими, спотыкаешься: единственный полезный эталон — вчерашний ты.',
+      author: 'Джеймс Клир',
+      source: '«Атомные привычки»; фокус на 1% улучшения',
+    ),
+    _ScreenQuote(
+      text: 'Люби жизнь, которую имеешь, прежде чем иметь жизнь, в которой уверен: мир внутри важнее гонки за внешним.',
+      author: 'Робин Шарма',
+      source: '«Монах, который продал свой „феррари“» (по смыслу благодарности и выбора)',
+    ),
+    // ——— Оригинальные мысли (как в ранних версиях, автор todoLife) ———
+    _ScreenQuote(text: 'Начни с малого — но начни сегодня.', author: 'todoLife'),
+    _ScreenQuote(text: 'Делай важное первым.', author: 'todoLife'),
+    _ScreenQuote(text: 'Системы побеждают настроение.', author: 'todoLife'),
+    _ScreenQuote(text: 'Планируй, чтобы жить легче.', author: 'todoLife'),
+    _ScreenQuote(text: 'Не жди идеального момента — создай его.', author: 'todoLife'),
+    _ScreenQuote(text: 'Один шаг в день — это тоже путь.', author: 'todoLife'),
+    _ScreenQuote(text: 'Дисциплина — это забота о будущем себе.', author: 'todoLife'),
+    _ScreenQuote(text: 'Стабильность сильнее рывков.', author: 'todoLife'),
+    _ScreenQuote(text: 'Побеждает тот, кто возвращается к делу.', author: 'todoLife'),
+    _ScreenQuote(text: 'Маленькие привычки строят большие результаты.', author: 'todoLife'),
+    _ScreenQuote(text: 'Доводи до конца хотя бы одну вещь.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сделай проще. Сделай сейчас.', author: 'todoLife'),
+    _ScreenQuote(text: 'День — это единица победы.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сложные цели состоят из простых действий.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сначала порядок — потом скорость.', author: 'todoLife'),
+    _ScreenQuote(text: 'Стабильно — значит надёжно.', author: 'todoLife'),
+    _ScreenQuote(text: 'Действуй так, будто мотивация уже пришла.', author: 'todoLife'),
+    _ScreenQuote(text: 'Не сравнивай. Улучшай.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сила в привычке.', author: 'todoLife'),
+    _ScreenQuote(text: 'Управляй временем, а не настроение — собой.', author: 'todoLife'),
+    _ScreenQuote(text: 'Каждый чек-лист — это ясность.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сначала здоровье, затем задачи.', author: 'todoLife'),
+    _ScreenQuote(text: 'Тишина — это тоже прогресс.', author: 'todoLife'),
+    _ScreenQuote(text: 'Не усложняй то, что можно выполнить.', author: 'todoLife'),
+    _ScreenQuote(text: 'Задачи на бумаге — меньше тревоги в голове.', author: 'todoLife'),
+    _ScreenQuote(text: 'Отдых — часть дисциплины.', author: 'todoLife'),
+    _ScreenQuote(text: 'Делай по чуть-чуть, но каждый день.', author: 'todoLife'),
+    _ScreenQuote(text: 'Накопление — это стратегия, не жертва.', author: 'todoLife'),
+    _ScreenQuote(text: 'Бюджет — это свобода, а не ограничения.', author: 'todoLife'),
+    _ScreenQuote(text: 'Твои деньги должны работать на тебя.', author: 'todoLife'),
+    _ScreenQuote(text: 'Контроль начинается с учёта.', author: 'todoLife'),
+    _ScreenQuote(text: 'Считай — и увидишь рост.', author: 'todoLife'),
+    _ScreenQuote(text: 'Простые правила побеждают сложные планы.', author: 'todoLife'),
+    _ScreenQuote(text: 'Рутина — это форма силы.', author: 'todoLife'),
+    _ScreenQuote(text: 'Ничего не меняется, если ничего не менять.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сделай сегодня то, за что завтра скажешь спасибо.', author: 'todoLife'),
+    _ScreenQuote(text: 'Вдохновение приходит в процессе.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сконцентрируйся на следующем шаге.', author: 'todoLife'),
+    _ScreenQuote(text: 'Каждая задача — кирпич в твоём будущем.', author: 'todoLife'),
+    _ScreenQuote(text: 'Упорядочи день — и появится энергия.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сделай минимум — и это уже победа.', author: 'todoLife'),
+    _ScreenQuote(text: 'Пять минут — тоже время.', author: 'todoLife'),
+    _ScreenQuote(text: 'Стабильный темп — лучший темп.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сомнение не делает дело.', author: 'todoLife'),
+    _ScreenQuote(text: 'План без действия — просто желание.', author: 'todoLife'),
+    _ScreenQuote(text: 'Действие лечит страх.', author: 'todoLife'),
+    _ScreenQuote(text: 'Лучший тайм-менеджмент — приоритеты.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сначала главное — потом остальное.', author: 'todoLife'),
+    _ScreenQuote(text: 'Окружай себя ясностью.', author: 'todoLife'),
+    _ScreenQuote(text: 'Не откладывай лёгкое: оно становится тяжёлым.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сделай один звонок. Напиши одно сообщение. Сдвинь дело.', author: 'todoLife'),
+    _ScreenQuote(text: 'Твоя цель любит регулярность.', author: 'todoLife'),
+    _ScreenQuote(text: 'Меньше шума — больше результата.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сосредоточься на том, что можешь контролировать.', author: 'todoLife'),
+    _ScreenQuote(text: 'Дисциплина — это выбор.', author: 'todoLife'),
+    _ScreenQuote(text: 'Отмечай выполненное — мозг любит прогресс.', author: 'todoLife'),
+    _ScreenQuote(text: 'Список дел — это карта, а не приговор.', author: 'todoLife'),
+    _ScreenQuote(text: 'Если устал — замедлись, но не останавливайся.', author: 'todoLife'),
+    _ScreenQuote(text: 'День без плана — день на автопилоте.', author: 'todoLife'),
+    _ScreenQuote(text: 'Чистая голова начинается с чистого списка.', author: 'todoLife'),
+    _ScreenQuote(text: 'Твоя дисциплина — твоя опора.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сначала постоянство, потом скорость.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сделай один маленький шаг прямо сейчас.', author: 'todoLife'),
+    _ScreenQuote(text: 'Побеждает тот, кто не сдаётся на простом.', author: 'todoLife'),
+    _ScreenQuote(text: 'Умение заканчивать — суперсила.', author: 'todoLife'),
+    _ScreenQuote(text: 'Долгосрочно выигрывает терпеливый.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сначала фундамент, потом вершины.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сократи до сущности.', author: 'todoLife'),
+    _ScreenQuote(text: 'Решение — это действие.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сделай сегодня на 1% лучше.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сильные привычки — тихие привычки.', author: 'todoLife'),
+    _ScreenQuote(text: 'Записывай: память любит подводить.', author: 'todoLife'),
+    _ScreenQuote(text: 'Время — твой главный актив.', author: 'todoLife'),
+    _ScreenQuote(text: 'Свобода — это порядок в делах и деньгах.', author: 'todoLife'),
+    _ScreenQuote(text: 'Если задача пугает — разбей её.', author: 'todoLife'),
+    _ScreenQuote(text: 'Минимум действий > максимум размышлений.', author: 'todoLife'),
+    _ScreenQuote(text: 'Дедлайн — это форма заботы о результате.', author: 'todoLife'),
+    _ScreenQuote(text: 'Уважай своё время: ставь границы.', author: 'todoLife'),
+    _ScreenQuote(text: 'Не нужно всё успеть — нужно успеть важное.', author: 'todoLife'),
+    _ScreenQuote(text: 'Один список. Один день. Один шаг.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сначала ясность, потом мотивация.', author: 'todoLife'),
+    _ScreenQuote(text: 'Проверяй план утром, благодарь себя вечером.', author: 'todoLife'),
+    _ScreenQuote(text: 'Твои действия — твой характер.', author: 'todoLife'),
+    _ScreenQuote(text: 'Привычка экономить — привычка побеждать.', author: 'todoLife'),
+    _ScreenQuote(text: 'Сбережения — это уважение к будущему.', author: 'todoLife'),
+    _ScreenQuote(text: 'Где внимание — там рост.', author: 'todoLife'),
+    _ScreenQuote(text: 'Порядок — это роскошь, доступная каждому.', author: 'todoLife'),
+    _ScreenQuote(text: 'Будь верен процессу.', author: 'todoLife'),
+    _ScreenQuote(text: 'Путь строится шагами.', author: 'todoLife'),
+    _ScreenQuote(text: 'Работай с тем, что есть — и станет больше.', author: 'todoLife'),
   ];
 
   void _nextQuote() {
@@ -290,8 +514,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             switchOutCurve: Curves.easeIn,
                             child: _QuoteView(
                               key: ValueKey('quote_$_quoteIndex'),
-                              text: _quotes[_quoteIndex].text,
-                              author: _quotes[_quoteIndex].author,
+                              quote: _quotes[_quoteIndex],
                             ),
                           ),
                         ),
@@ -344,10 +567,14 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _QuoteView extends StatelessWidget {
-  const _QuoteView({super.key, required this.text, required this.author});
+  const _QuoteView({super.key, required this.quote});
 
-  final String text;
-  final String author;
+  final _ScreenQuote quote;
+
+  static String _attributionLine(_ScreenQuote q) {
+    if (q.source == null || q.source!.isEmpty) return q.author;
+    return '${q.author} · ${q.source}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -365,7 +592,7 @@ class _QuoteView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '“$text”',
+              '“${quote.text}”',
               maxLines: quoteLines,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -378,12 +605,15 @@ class _QuoteView extends StatelessWidget {
             ),
             SizedBox(height: gap),
             Text(
-              author.toUpperCase(),
+              _attributionLine(quote),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.62),
                 fontSize: authorSize,
-                letterSpacing: 2.4,
-                fontWeight: FontWeight.w600,
+                letterSpacing: 0.2,
+                fontWeight: FontWeight.w500,
+                height: 1.2,
               ),
             ),
           ],
