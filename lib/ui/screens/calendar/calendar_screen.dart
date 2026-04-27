@@ -249,6 +249,8 @@ class CalendarEventEditScreen extends StatefulWidget {
 class _CalendarEventEditScreenState extends State<CalendarEventEditScreen> {
   final _title = TextEditingController();
   final _note = TextEditingController();
+  TimeOfDay? _start;
+  TimeOfDay? _end;
   int? _reminder;
   bool _initialized = false;
 
@@ -276,9 +278,161 @@ class _CalendarEventEditScreenState extends State<CalendarEventEditScreen> {
         _title.text = e.title;
         _note.text = e.note ?? '';
         _reminder = e.reminderMinutes;
+        _start = _parseTime(e.startTime);
+        _end = _parseTime(e.endTime);
       }
     }
     _initialized = true;
+  }
+
+  TimeOfDay? _parseTime(String? s) {
+    if (s == null) return null;
+    final parts = s.split(':');
+    if (parts.length != 2) return null;
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null) return null;
+    return TimeOfDay(hour: h, minute: m);
+  }
+
+  String? _formatTime(TimeOfDay? t) {
+    if (t == null) return null;
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<TimeOfDay?> _pickRealisticTime(TimeOfDay? initial) async {
+    final init = initial ?? TimeOfDay.now();
+    var isPm = init.hour >= 12;
+    var hour12 = init.hour % 12;
+    if (hour12 == 0) hour12 = 12;
+    var minute = (init.minute / 5).round() * 5;
+    if (minute == 60) minute = 55;
+
+    final hours = List<int>.generate(12, (i) => i + 1); // 1..12
+    final minutes = List<int>.generate(12, (i) => i * 5); // 0..55
+
+    final hCtrl = FixedExtentScrollController(initialItem: hours.indexOf(hour12));
+    final mCtrl =
+        FixedExtentScrollController(initialItem: minutes.indexOf(minute));
+
+    return showDialog<TimeOfDay>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Выберите время'),
+        content: StatefulBuilder(
+          builder: (context, setLocal) {
+            TimeOfDay current() {
+              final h12 = hours[hCtrl.selectedItem];
+              final mm = minutes[mCtrl.selectedItem];
+              var h24 = h12 % 12;
+              if (isPm) h24 += 12;
+              return TimeOfDay(hour: h24, minute: mm);
+            }
+
+            final v = current();
+            final preview =
+                '${v.hour.toString().padLeft(2, '0')}:${v.minute.toString().padLeft(2, '0')}';
+
+            return SizedBox(
+              width: 320,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    preview,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 160,
+                          child: ListWheelScrollView.useDelegate(
+                            controller: hCtrl,
+                            itemExtent: 36,
+                            physics: const FixedExtentScrollPhysics(),
+                            onSelectedItemChanged: (_) =>
+                                setLocal(() {/* rebuild */}),
+                            childDelegate: ListWheelChildBuilderDelegate(
+                              builder: (context, index) {
+                                if (index < 0 || index >= hours.length) return null;
+                                return Center(
+                                  child: Text(
+                                    hours[index].toString().padLeft(2, '0'),
+                                    style: Theme.of(context).textTheme.titleLarge,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: SizedBox(
+                          height: 160,
+                          child: ListWheelScrollView.useDelegate(
+                            controller: mCtrl,
+                            itemExtent: 36,
+                            physics: const FixedExtentScrollPhysics(),
+                            onSelectedItemChanged: (_) =>
+                                setLocal(() {/* rebuild */}),
+                            childDelegate: ListWheelChildBuilderDelegate(
+                              builder: (context, index) {
+                                if (index < 0 || index >= minutes.length) return null;
+                                return Center(
+                                  child: Text(
+                                    minutes[index].toString().padLeft(2, '0'),
+                                    style: Theme.of(context).textTheme.titleLarge,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        children: [
+                          ChoiceChip(
+                            label: const Text('AM'),
+                            selected: !isPm,
+                            onSelected: (_) => setLocal(() => isPm = false),
+                          ),
+                          const SizedBox(height: 8),
+                          ChoiceChip(
+                            label: const Text('PM'),
+                            selected: isPm,
+                            onSelected: (_) => setLocal(() => isPm = true),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final h12 = hours[hCtrl.selectedItem];
+              final mm = minutes[mCtrl.selectedItem];
+              var h24 = h12 % 12;
+              if (isPm) h24 += 12;
+              Navigator.of(context).pop(TimeOfDay(hour: h24, minute: mm));
+            },
+            child: const Text('ОК'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -315,6 +469,32 @@ class _CalendarEventEditScreenState extends State<CalendarEventEditScreen> {
               ),
             ),
             const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      final picked = await _pickRealisticTime(_start);
+                      if (picked == null) return;
+                      setState(() => _start = picked);
+                    },
+                    child: Text(_start == null ? 'Начало' : _formatTime(_start)!),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () async {
+                      final picked = await _pickRealisticTime(_end ?? _start);
+                      if (picked == null) return;
+                      setState(() => _end = picked);
+                    },
+                    child: Text(_end == null ? 'Конец' : _formatTime(_end)!),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             DropdownButtonFormField<int?>(
               initialValue: _reminder,
               items: const [
@@ -341,8 +521,8 @@ class _CalendarEventEditScreenState extends State<CalendarEventEditScreen> {
                   id: id,
                   title: title,
                   dateKey: _dateKey(widget.date),
-                  startTime: null,
-                  endTime: null,
+                  startTime: _formatTime(_start),
+                  endTime: _formatTime(_end),
                   note: _note.text.trim().isEmpty ? null : _note.text.trim(),
                   reminderMinutes: _reminder,
                   createdAtMs: now,
