@@ -76,17 +76,27 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> deleteTask(TaskKind kind, String id) async {
+    if (kind == TaskKind.long) {
+      await _deleteCalendarEventsForTask(id);
+    }
     final updated =
         tasks(kind).where((t) => t.id != id).toList(growable: false);
     await _setTasks(kind, updated);
   }
 
   Future<void> clearTasks(TaskKind kind) async {
+    if (kind == TaskKind.long) {
+      // Remove calendar events bound to long-term tasks.
+      final ids = tasks(kind).map((t) => t.id).toList(growable: false);
+      for (final id in ids) {
+        await _deleteCalendarEventsForTask(id);
+      }
+    }
     await _setTasks(kind, const []);
   }
 
   Future<void> upsertTask(TaskKind kind,
-      {String? id, required String text}) async {
+      {String? id, required String text, String? deadlineDateKey}) async {
     final now = DateTime.now().millisecondsSinceEpoch;
     final normalized = text.trim();
     if (normalized.isEmpty) return;
@@ -95,15 +105,23 @@ class AppState extends ChangeNotifier {
     final existingIndex = id == null ? -1 : list.indexWhere((t) => t.id == id);
     final updated = [...list];
 
+    TaskItem? nextTask;
     if (existingIndex >= 0) {
-      updated[existingIndex] =
-          updated[existingIndex].copyWith(text: normalized);
+      nextTask = updated[existingIndex].copyWith(
+        text: normalized,
+        deadlineDateKey: deadlineDateKey,
+      );
+      updated[existingIndex] = nextTask;
     } else {
       final newId = '$now-${normalized.hashCode}';
-      updated.insert(
-        0,
-        TaskItem(id: newId, text: normalized, done: false, createdAtMs: now),
+      nextTask = TaskItem(
+        id: newId,
+        text: normalized,
+        done: false,
+        createdAtMs: now,
+        deadlineDateKey: deadlineDateKey,
       );
+      updated.insert(0, nextTask);
     }
 
     await _setTasks(kind, updated);
@@ -111,6 +129,36 @@ class AppState extends ChangeNotifier {
       final now = DateTime.now();
       await _storage.saveDailyTasksDate(DateTime(now.year, now.month, now.day));
     }
+
+    if (kind == TaskKind.long) {
+      await _syncLongTaskToCalendar(nextTask);
+    }
+  }
+
+  Future<void> _syncLongTaskToCalendar(TaskItem task) async {
+    // If no deadline, remove bound events.
+    if (task.deadlineDateKey == null || task.deadlineDateKey!.trim().isEmpty) {
+      await _deleteCalendarEventsForTask(task.id);
+      return;
+    }
+
+    final eventId = 'task:${task.id}';
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final event = CalendarEvent(
+      id: eventId,
+      title: task.text,
+      dateKey: task.deadlineDateKey!,
+      note: 'Дедлайн долгосрочной задачи',
+      sourceType: 'task',
+      sourceId: task.id,
+      createdAtMs: now,
+    );
+    await upsertCalendarEvent(event);
+  }
+
+  Future<void> _deleteCalendarEventsForTask(String taskId) async {
+    final eventId = 'task:$taskId';
+    await deleteCalendarEvent(eventId);
   }
 
   TaskItem? findTask(TaskKind kind, String id) {

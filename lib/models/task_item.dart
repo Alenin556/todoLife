@@ -4,19 +4,23 @@ class TaskItem {
     required this.text,
     required this.done,
     required this.createdAtMs,
+    this.deadlineDateKey,
   });
 
   final String id;
   final String text;
   final bool done;
   final int createdAtMs;
+  /// YYYY-MM-DD (optional). Used for long-term tasks deadline.
+  final String? deadlineDateKey;
 
-  TaskItem copyWith({String? text, bool? done}) {
+  TaskItem copyWith({String? text, bool? done, String? deadlineDateKey}) {
     return TaskItem(
       id: id,
       text: text ?? this.text,
       done: done ?? this.done,
       createdAtMs: createdAtMs,
+      deadlineDateKey: deadlineDateKey ?? this.deadlineDateKey,
     );
   }
 
@@ -25,6 +29,7 @@ class TaskItem {
         'text': text,
         'done': done,
         'createdAtMs': createdAtMs,
+        'deadlineDateKey': deadlineDateKey,
       };
 
   static TaskItem fromJson(Map<String, Object?> j) {
@@ -33,6 +38,7 @@ class TaskItem {
       text: (j['text'] as String?) ?? '',
       done: (j['done'] as bool?) ?? false,
       createdAtMs: (j['createdAtMs'] as int?) ?? 0,
+      deadlineDateKey: j['deadlineDateKey'] as String?,
     );
   }
 }

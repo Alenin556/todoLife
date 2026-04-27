@@ -186,6 +186,12 @@ class _TaskTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final deadlineLabel = (kind == TaskKind.long &&
+            item.deadlineDateKey != null &&
+            item.deadlineDateKey!.trim().isNotEmpty)
+        ? 'Дедлайн: ${item.deadlineDateKey}'
+        : null;
+
     return Dismissible(
       key: ValueKey('${kind.routeSegment}-${item.id}'),
       direction: DismissDirection.endToStart,
@@ -217,7 +223,20 @@ class _TaskTile extends StatelessWidget {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Text(item.text),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(item.text),
+                      if (deadlineLabel != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            deadlineLabel,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
               IconButton(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../scope/app_state_scope.dart';
 import 'task_list_screen.dart';
@@ -17,6 +18,7 @@ class TaskEditScreen extends StatefulWidget {
 class _TaskEditScreenState extends State<TaskEditScreen> {
   TextEditingController? _c;
   bool _initialized = false;
+  DateTime? _deadline;
 
   @override
   void initState() {
@@ -32,6 +34,9 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
         ? null
         : appState.findTask(widget.kind, widget.taskId!);
     _c = TextEditingController(text: existing?.text ?? '');
+    if (widget.kind == TaskKind.long && existing?.deadlineDateKey != null) {
+      _deadline = DateTime.tryParse(existing!.deadlineDateKey!);
+    }
     _initialized = true;
   }
 
@@ -72,13 +77,48 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                 ),
                 maxLines: 4,
               ),
+              if (widget.kind == TaskKind.long) ...[
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final now = DateTime.now();
+                    final initial = _deadline ?? now;
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: initial,
+                      firstDate: DateTime(now.year - 1),
+                      lastDate: DateTime(now.year + 10),
+                    );
+                    if (picked == null) return;
+                    setState(() => _deadline = picked);
+                  },
+                  icon: const Icon(Icons.event_outlined),
+                  label: Text(
+                    _deadline == null
+                        ? 'Добавить дедлайн (необязательно)'
+                        : 'Дедлайн: ${DateFormat('d MMMM yyyy', 'ru_RU').format(_deadline!)}',
+                  ),
+                ),
+                if (_deadline != null)
+                  TextButton(
+                    onPressed: () => setState(() => _deadline = null),
+                    child: const Text('Убрать дедлайн'),
+                  ),
+              ],
               const SizedBox(height: 12),
               FilledButton(
                 onPressed: () async {
+                  String? deadlineKey;
+                  if (widget.kind == TaskKind.long && _deadline != null) {
+                    final d = _deadline!;
+                    deadlineKey =
+                        '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+                  }
                   await appState.upsertTask(
                     widget.kind,
                     id: widget.taskId,
                     text: c.text,
+                    deadlineDateKey: deadlineKey,
                   );
                   if (!context.mounted) return;
                   context.go('/tasks/${widget.kind.routeSegment}');
