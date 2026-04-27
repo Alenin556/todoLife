@@ -41,8 +41,13 @@ class NotificationsService {
 
   Future<void> scheduleOrUpdateForCalendarEvent(CalendarEvent e) async {
     if (kIsWeb) return;
-    final start = _eventStartDateTime(e);
-    if (start == null) {
+    final scheduled = _scheduledDateTime(e);
+    if (scheduled == null) {
+      await cancelForEventId(e.id);
+      return;
+    }
+    if (scheduled.isBefore(DateTime.now())) {
+      // Don't fire stale reminders.
       await cancelForEventId(e.id);
       return;
     }
@@ -62,7 +67,7 @@ class NotificationsService {
 
     await _plugin.zonedSchedule(
       id: id,
-      scheduledDate: tz.TZDateTime.from(start, tz.local),
+      scheduledDate: tz.TZDateTime.from(scheduled, tz.local),
       notificationDetails: details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       title: e.title,
@@ -75,9 +80,11 @@ class NotificationsService {
     await _plugin.cancel(id: _stableId(eventId));
   }
 
-  DateTime? _eventStartDateTime(CalendarEvent e) {
+  DateTime? _scheduledDateTime(CalendarEvent e) {
     final t = e.startTime;
     if (t == null || t.trim().isEmpty) return null;
+    final reminder = e.reminderMinutes;
+    if (reminder == null) return null; // "Без напоминания"
     final parts = t.split(':');
     if (parts.length != 2) return null;
     final h = int.tryParse(parts[0]);
@@ -89,7 +96,8 @@ class NotificationsService {
     final mo = int.tryParse(dParts[1]);
     final da = int.tryParse(dParts[2]);
     if (y == null || mo == null || da == null) return null;
-    return DateTime(y, mo, da, h, m);
+    final start = DateTime(y, mo, da, h, m);
+    return start.subtract(Duration(minutes: reminder));
   }
 
   int _stableId(String s) {
