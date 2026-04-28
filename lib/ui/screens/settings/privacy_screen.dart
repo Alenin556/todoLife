@@ -4,6 +4,8 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../../scope/app_state_scope.dart';
 import '../../../services/android_secure_screen.dart';
+import '../../../app_state.dart';
+import '../tasks/task_list_screen.dart';
 
 enum _DocKind { privacy, terms, consent }
 
@@ -14,6 +16,7 @@ class PrivacyScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = AppStateScope.of(context);
     final lock = appState.lockSettings;
+    final isEn = appState.locale.languageCode == 'en';
     final pinStatus = FutureBuilder<bool>(
       future: appState.appLockHasPin(),
       builder: (context, snap) {
@@ -92,34 +95,36 @@ class PrivacyScreen extends StatelessWidget {
                 children: [
                   ListTile(
                     leading: const Icon(Icons.description_outlined),
-                    title: const Text('Политика конфиденциальности'),
+                    title: Text(isEn ? 'Privacy Policy' : 'Политика конфиденциальности'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const _DocScreen(kind: _DocKind.privacy),
+                        builder: (_) => _DocScreen(kind: _DocKind.privacy, isEn: isEn),
                       ),
                     ),
                   ),
                   const Divider(height: 1),
                   ListTile(
                     leading: const Icon(Icons.gavel_outlined),
-                    title: const Text('Условия использования'),
+                    title: Text(isEn ? 'Terms of Use' : 'Условия использования'),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const _DocScreen(kind: _DocKind.terms),
+                        builder: (_) => _DocScreen(kind: _DocKind.terms, isEn: isEn),
                       ),
                     ),
                   ),
                   const Divider(height: 1),
                   ListTile(
                     leading: const Icon(Icons.fact_check_outlined),
-                    title: const Text('Согласие (шаблон)'),
-                    subtitle: const Text('Нужно при аналитике/крашах/рекламе'),
+                    title: Text(isEn ? 'Consent (template)' : 'Согласие (шаблон)'),
+                    subtitle: Text(
+                      isEn ? 'Needed for analytics/crash reports/ads' : 'Нужно при аналитике/крашах/рекламе',
+                    ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => const _DocScreen(kind: _DocKind.consent),
+                        builder: (_) => _DocScreen(kind: _DocKind.consent, isEn: isEn),
                       ),
                     ),
                   ),
@@ -193,14 +198,18 @@ class PrivacyScreen extends StatelessWidget {
                   ),
                   ListTile(
                     leading: const Icon(Icons.download_outlined),
-                    title: const Text('Экспорт данных'),
-                    subtitle: const Text('Скопировать JSON в буфер обмена'),
+                    title: Text(isEn ? 'Export data' : 'Экспорт данных'),
+                    subtitle: Text(isEn ? 'Copy TXT to clipboard' : 'Скопировать TXT в буфер обмена'),
                     onTap: () async {
-                      final json = appState.exportUserDataJson();
-                      await Clipboard.setData(ClipboardData(text: json));
+                      final txt = _exportTxt(appState, isEn: isEn);
+                      await Clipboard.setData(ClipboardData(text: txt));
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('JSON скопирован в буфер обмена')),
+                        SnackBar(
+                          content: Text(
+                            isEn ? 'TXT copied to clipboard' : 'TXT скопирован в буфер обмена',
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -383,29 +392,30 @@ class _PinFlowScreenState extends State<_PinFlowScreen> {
 }
 
 class _DocScreen extends StatelessWidget {
-  const _DocScreen({required this.kind});
+  const _DocScreen({required this.kind, required this.isEn});
 
   final _DocKind kind;
+  final bool isEn;
 
   String get _assetPath {
     switch (kind) {
       case _DocKind.privacy:
-        return 'docs/privacy_policy.md';
+        return isEn ? 'docs/privacy_policy_en.md' : 'docs/privacy_policy.md';
       case _DocKind.terms:
-        return 'docs/terms.md';
+        return isEn ? 'docs/terms_en.md' : 'docs/terms.md';
       case _DocKind.consent:
-        return 'docs/consent.md';
+        return isEn ? 'docs/consent_en.md' : 'docs/consent.md';
     }
   }
 
   String get _title {
     switch (kind) {
       case _DocKind.privacy:
-        return 'Политика конфиденциальности';
+        return isEn ? 'Privacy Policy' : 'Политика конфиденциальности';
       case _DocKind.terms:
-        return 'Условия использования';
+        return isEn ? 'Terms of Use' : 'Условия использования';
       case _DocKind.consent:
-        return 'Согласие (шаблон)';
+        return isEn ? 'Consent (template)' : 'Согласие (шаблон)';
     }
   }
 
@@ -430,5 +440,79 @@ class _DocScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+String _exportTxt(AppState appState, {required bool isEn}) {
+  final now = DateTime.now();
+  final header = isEn ? 'todoLife export' : 'Экспорт todoLife';
+  final when = isEn ? 'Exported at' : 'Дата экспорта';
+
+  final daily = appState.tasks(TaskKind.daily);
+  final long = appState.tasks(TaskKind.long);
+  final events = appState.calendarEvents;
+  final budget = appState.salarySplitDraft;
+
+  final b = StringBuffer();
+  b.writeln(header);
+  b.writeln('$when: $now');
+  b.writeln();
+
+  b.writeln(isEn ? 'Daily tasks:' : 'Задачи на день:');
+  if (daily.isEmpty) {
+    b.writeln(isEn ? '- (none)' : '- (нет)');
+  } else {
+    for (final t in daily.reversed) {
+      final mark = t.done ? (isEn ? '[x]' : '[x]') : '[ ]';
+      b.writeln('- $mark ${t.text}');
+    }
+  }
+  b.writeln();
+
+  b.writeln(isEn ? 'Long-term tasks:' : 'Долгосрочные задачи:');
+  if (long.isEmpty) {
+    b.writeln(isEn ? '- (none)' : '- (нет)');
+  } else {
+    for (final t in long.reversed) {
+      final mark = t.done ? '[x]' : '[ ]';
+      final dl = (t.deadlineDateKey != null && t.deadlineDateKey!.trim().isNotEmpty)
+          ? (isEn ? ' (deadline: ${t.deadlineDateKey})' : ' (дедлайн: ${t.deadlineDateKey})')
+          : '';
+      b.writeln('- $mark ${t.text}$dl');
+    }
+  }
+  b.writeln();
+
+  b.writeln(isEn ? 'Calendar events:' : 'События календаря:');
+  if (events.isEmpty) {
+    b.writeln(isEn ? '- (none)' : '- (нет)');
+  } else {
+    for (final e in events.reversed) {
+      final time = (e.startTime != null && e.startTime!.trim().isNotEmpty)
+          ? (isEn ? ' ${e.startTime}' : ' ${e.startTime}')
+          : '';
+      b.writeln('- ${e.dateKey}$time — ${e.title}');
+      if (e.note != null && e.note!.trim().isNotEmpty) {
+        b.writeln('  ${isEn ? "Note" : "Заметка"}: ${e.note}');
+      }
+    }
+  }
+  b.writeln();
+
+  b.writeln(isEn ? 'Budget (Funds):' : 'Финансы (Средства):');
+  b.writeln('${isEn ? "Salary" : "ЗП"}: ${budget.salary.toStringAsFixed(0)}');
+  if (budget.manualAmounts.isNotEmpty) {
+    b.writeln(isEn ? 'Amounts:' : 'Суммы:');
+    for (final e in budget.manualAmounts.entries) {
+      b.writeln('- ${e.key}: ${e.value.toStringAsFixed(0)}');
+    }
+  }
+  if (budget.customAmounts.isNotEmpty) {
+    b.writeln(isEn ? 'Custom categories:' : 'Пользовательские категории:');
+    for (final e in budget.customAmounts.entries) {
+      b.writeln('- ${e.key}: ${e.value.toStringAsFixed(0)}');
+    }
+  }
+
+  return b.toString();
 }
 

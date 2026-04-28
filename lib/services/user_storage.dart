@@ -16,6 +16,7 @@ class UserStorage {
   final SecureKvStorage? _secure;
 
   static const _kTheme = 'app_theme_mode';
+  static const _kLanguage = 'app_language_v1'; // 'ru' | 'en'
   static const _kTasksDaily = 'tasks_daily_v1';
   static const _kTasksLong = 'tasks_long_v1';
   static const _kTasksDailyDate = 'tasks_daily_date_v1';
@@ -57,6 +58,17 @@ class UserStorage {
   Future<void> saveTheme(ThemeMode m) async {
     final v = m == ThemeMode.dark ? 'dark' : 'light';
     await _p.setString(_kTheme, v);
+  }
+
+  String loadLanguageCode() {
+    final v = _p.getString(_kLanguage);
+    if (v == 'en') return 'en';
+    return 'ru';
+  }
+
+  Future<void> saveLanguageCode(String code) async {
+    final v = code == 'en' ? 'en' : 'ru';
+    await _p.setString(_kLanguage, v);
   }
 
   Future<List<TaskItem>> loadTasks(TaskKind kind) async {

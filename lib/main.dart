@@ -94,8 +94,9 @@ class _MyAppState extends State<MyApp> {
           ],
           supportedLocales: const [
             Locale('ru', 'RU'),
+            Locale('en', 'US'),
           ],
-          locale: const Locale('ru', 'RU'),
+          locale: widget.appState.locale,
           routerConfig: _appRouter.router,
           builder: (context, child) {
             final locked = widget.appState.lockSettings.enabled && widget.appState.locked;

@@ -10,13 +10,14 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = AppStateScope.of(context);
     final scheme = Theme.of(context).colorScheme;
+    final isEn = appState.locale.languageCode == 'en';
 
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'Настройки',
+            isEn ? 'Settings' : 'Настройки',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -31,7 +32,7 @@ class SettingsScreen extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Тема',
+                      isEn ? 'Theme' : 'Тема',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -59,12 +60,44 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Card(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Icon(Icons.language_outlined, color: scheme.onSurface),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      isEn ? 'Language' : 'Язык',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'ru', label: Text('RU')),
+                      ButtonSegment(value: 'en', label: Text('EN')),
+                    ],
+                    selected: {isEn ? 'en' : 'ru'},
+                    onSelectionChanged: (v) => appState.setLanguageCode(v.first),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
             child: Column(
               children: [
                 ListTile(
                   leading: const Icon(Icons.privacy_tip_outlined),
-                  title: const Text('Конфиденциальность'),
-                  subtitle: const Text('Политика, условия, управление данными'),
+                  title: Text(isEn ? 'Privacy' : 'Конфиденциальность'),
+                  subtitle: Text(
+                    isEn
+                        ? 'Policy, terms, data controls'
+                        : 'Политика, условия, управление данными',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => context.go('/settings/privacy'),
                 ),

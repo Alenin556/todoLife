@@ -21,6 +21,7 @@ class AppState extends ChangeNotifier {
 
   ThemeMode _themeMode = ThemeMode.light;
   bool _ready = false;
+  Locale _locale = const Locale('ru', 'RU');
 
   List<TaskItem> _dailyTasks = const [];
   List<TaskItem> _longTasks = const [];
@@ -46,6 +47,7 @@ class AppState extends ChangeNotifier {
 
   ThemeMode get themeMode => _themeMode;
   bool get ready => _ready;
+  Locale get locale => _locale;
   AppLockSettings get lockSettings => _lockSettings;
   bool get locked => _locked;
 
@@ -80,6 +82,9 @@ class AppState extends ChangeNotifier {
 
   Future<void> init() async {
     _themeMode = _storage.loadTheme();
+    _locale = _storage.loadLanguageCode() == 'en'
+        ? const Locale('en', 'US')
+        : const Locale('ru', 'RU');
     _lockSettings = _appLock.loadSettings();
     _locked = _lockSettings.enabled; // lock immediately on cold start when enabled
     _dailyTasks = await _storage.loadTasks(TaskKind.daily);
@@ -90,6 +95,12 @@ class AppState extends ChangeNotifier {
     _salarySplitDraft = await _storage.loadSalarySplitDraft();
     _savedSalarySplits = await _storage.loadSavedSalarySplits();
     _ready = true;
+    notifyListeners();
+  }
+
+  Future<void> setLanguageCode(String code) async {
+    await _storage.saveLanguageCode(code);
+    _locale = code == 'en' ? const Locale('en', 'US') : const Locale('ru', 'RU');
     notifyListeners();
   }
 
