@@ -158,12 +158,10 @@ class AppState extends ChangeNotifier {
   void onAppResumed() {
     if (!_lockSettings.enabled) return;
     final bg = _lastBackgroundAt;
-    if (bg == null) {
-      // App was cold-started; lock if enabled.
-      _locked = true;
-      notifyListeners();
-      return;
-    }
+    // Cold-start locking is handled in init() and when enabling the feature.
+    // If we don't have a background timestamp, do not force-lock here
+    // (prevents immediately re-locking right after successful unlock).
+    if (bg == null) return;
     final elapsed = DateTime.now().difference(bg).inSeconds;
     if (elapsed >= _lockSettings.autoLockSeconds) {
       _locked = true;
