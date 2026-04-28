@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../scope/app_state_scope.dart';
 import '../../../services/android_secure_screen.dart';
@@ -14,6 +16,7 @@ class PrivacyScreen extends StatelessWidget {
 
   Future<void> _sendBugReport(BuildContext context, AppState appState, {required bool isEn}) async {
     final ctrl = TextEditingController();
+    XFile? picked;
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -23,8 +26,8 @@ class PrivacyScreen extends StatelessWidget {
           children: [
             Text(
               isEn
-                  ? 'Describe what happened. We will copy a diagnostic report to clipboard.'
-                  : 'Опишите проблему. Мы скопируем диагностический отчёт в буфер обмена.',
+                  ? 'Describe what happened. You can attach a screenshot/photo. We will share a diagnostic report.'
+                  : 'Опишите проблему. Можно приложить скриншот/фото. Мы сформируем отчёт.',
             ),
             const SizedBox(height: 12),
             TextField(
@@ -36,6 +39,38 @@ class PrivacyScreen extends StatelessWidget {
                 border: const OutlineInputBorder(),
               ),
             ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final img = await ImagePicker().pickImage(
+                        source: ImageSource.gallery,
+                        maxWidth: 2200,
+                        imageQuality: 92,
+                      );
+                      picked = img;
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context)
+                          ..clearSnackBars()
+                          ..showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                img == null
+                                    ? (isEn ? 'No image selected' : 'Фото не выбрано')
+                                    : (isEn ? 'Image attached' : 'Фото прикреплено'),
+                              ),
+                            ),
+                          );
+                      }
+                    },
+                    icon: const Icon(Icons.photo_outlined),
+                    label: Text(isEn ? 'Attach photo' : 'Прикрепить фото'),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
         actions: [
@@ -45,20 +80,25 @@ class PrivacyScreen extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(isEn ? 'Copy' : 'Скопировать'),
+            child: Text(isEn ? 'Share' : 'Поделиться'),
           ),
         ],
       ),
     );
     if (ok != true) return;
     final report = appState.buildBugReport(userMessage: ctrl.text);
-    await Clipboard.setData(ClipboardData(text: report));
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(isEn ? 'Bug report copied' : 'Баг-репорт скопирован'),
-      ),
-    );
+    if (picked != null) {
+      await Share.shareXFiles(
+        [picked!],
+        text: report,
+        subject: 'todoLife bug report',
+      );
+    } else {
+      await Share.share(
+        report,
+        subject: 'todoLife bug report',
+      );
+    }
   }
 
   @override
