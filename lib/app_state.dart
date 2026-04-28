@@ -86,7 +86,13 @@ class AppState extends ChangeNotifier {
         ? const Locale('en', 'US')
         : const Locale('ru', 'RU');
     _lockSettings = _appLock.loadSettings();
-    _locked = _lockSettings.enabled; // lock immediately on cold start when enabled
+    // Don't lock if user hasn't set PIN and device auth isn't available.
+    if (_lockSettings.enabled) {
+      final canLock = await appLockHasPin() || await deviceAuthAvailable();
+      _locked = canLock;
+    } else {
+      _locked = false;
+    }
     _dailyTasks = await _storage.loadTasks(TaskKind.daily);
     _longTasks = await _storage.loadTasks(TaskKind.long);
     _calendarEvents = await _storage.loadCalendarEvents();
@@ -113,8 +119,9 @@ class AppState extends ChangeNotifier {
       _locked = false;
       _lastBackgroundAt = null;
     } else if (!wasEnabled && s.enabled) {
-      // Newly enabled: lock immediately.
-      _locked = true;
+      // Newly enabled: lock only if there is a way to unlock.
+      final canLock = await appLockHasPin() || await deviceAuthAvailable();
+      _locked = canLock;
       _lastBackgroundAt = null;
     }
     notifyListeners();

@@ -14,6 +14,7 @@ import 'services/user_storage.dart';
 import 'ui/theme/app_theme.dart';
 import 'ui/screens/settings/app_lock_screen.dart';
 import 'services/android_secure_screen.dart';
+import 'ui/scope/app_state_scope.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -111,10 +112,13 @@ class _MyAppState extends State<MyApp> {
                     child: ColoredBox(color: Colors.black),
                   ),
                 if (locked)
-                  const Positioned.fill(
-                    child: Material(
-                      color: Colors.black,
-                      child: AppLockScreen(),
+                  Positioned.fill(
+                    child: AppStateScope(
+                      notifier: widget.appState,
+                      child: const Material(
+                        color: Colors.black,
+                        child: AppLockScreen(),
+                      ),
                     ),
                   ),
               ],
