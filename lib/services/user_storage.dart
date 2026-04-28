@@ -32,6 +32,7 @@ class UserStorage {
   static const _kPrivacyLockEnabled = 'privacy_lock_enabled_v1';
   static const _kPrivacyAutoLockSeconds = 'privacy_autolock_seconds_v1';
   static const _kPrivacyPreventScreenshots = 'privacy_prevent_screenshots_v1';
+  static const _kPrivacyBiometricEnabled = 'privacy_biometric_enabled_v1';
 
   // Sensitive: PIN hash (if user enables app PIN).
   static const _kPrivacyPinHash = 'privacy_pin_hash_v1';
@@ -137,6 +138,11 @@ class UserStorage {
       _p.getBool(_kPrivacyPreventScreenshots) ?? true;
   Future<void> savePrivacyPreventScreenshots(bool v) =>
       _p.setBool(_kPrivacyPreventScreenshots, v);
+
+  bool loadPrivacyBiometricEnabled() =>
+      _p.getBool(_kPrivacyBiometricEnabled) ?? false;
+  Future<void> savePrivacyBiometricEnabled(bool v) =>
+      _p.setBool(_kPrivacyBiometricEnabled, v);
 
   Future<String?> loadPrivacyPinHash() => _readSensitive(_kPrivacyPinHash);
   Future<void> savePrivacyPinHash(String hash) => _writeSensitive(_kPrivacyPinHash, hash);

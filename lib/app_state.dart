@@ -41,6 +41,7 @@ class AppState extends ChangeNotifier {
     enabled: false,
     autoLockSeconds: 0,
     preventScreenshots: true,
+    biometricEnabled: false,
   );
 
   bool _locked = false;
@@ -137,6 +138,8 @@ class AppState extends ChangeNotifier {
   Future<void> setAppPin(String pin) => _appLock.setPin(pin);
   Future<void> clearAppPin() => _appLock.clearPin();
   Future<bool> verifyAppPin(String pin) => _appLock.verifyPin(pin);
+  Future<bool> authenticateWithDevice() => _appLock.authenticateWithDevice();
+  Future<bool> deviceAuthAvailable() => _appLock.deviceAuthAvailable();
 
   void onAppBackgrounded() {
     if (!_lockSettings.enabled) return;

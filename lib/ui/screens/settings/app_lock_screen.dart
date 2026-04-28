@@ -15,6 +15,7 @@ class _AppLockScreenState extends State<AppLockScreen> {
   bool _busy = false;
   String? _error;
   bool? _hasPin;
+  bool? _deviceAuthAvailable;
 
   @override
   void dispose() {
@@ -23,11 +24,15 @@ class _AppLockScreenState extends State<AppLockScreen> {
   }
 
   Future<void> _init(AppState appState) async {
-    if (_hasPin != null) return;
+    if (_hasPin != null && _deviceAuthAvailable != null) return;
     final hasPin = await appState.appLockHasPin();
+    final dev = appState.lockSettings.biometricEnabled
+        ? await appState.deviceAuthAvailable()
+        : false;
     if (!mounted) return;
     setState(() {
       _hasPin = hasPin;
+      _deviceAuthAvailable = dev;
     });
   }
 
@@ -46,13 +51,29 @@ class _AppLockScreenState extends State<AppLockScreen> {
     setState(() => _busy = false);
   }
 
+  Future<void> _unlockWithDevice(AppState appState) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final ok = await appState.authenticateWithDevice();
+    if (!mounted) return;
+    if (ok) {
+      appState.unlock();
+    } else {
+      setState(() => _error = 'Не удалось подтвердить');
+    }
+    setState(() => _busy = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = AppStateScope.of(context);
     _init(appState);
 
-    final initializing = _hasPin == null;
+    final initializing = _hasPin == null || _deviceAuthAvailable == null;
     final hasPin = _hasPin ?? false;
+    final dev = _deviceAuthAvailable ?? false;
 
     return Scaffold(
       body: SafeArea(
@@ -124,6 +145,13 @@ class _AppLockScreenState extends State<AppLockScreen> {
                           onPressed: _busy ? null : () => _unlockWithPin(appState),
                           child: const Text('Разблокировать'),
                         ),
+                      if (dev) ...[
+                        if (hasPin) const SizedBox(height: 8),
+                        OutlinedButton(
+                          onPressed: _busy ? null : () => _unlockWithDevice(appState),
+                          child: const Text('Использовать биометрию/пароль устройства'),
+                        ),
+                      ],
                     ],
                   ),
                 ),

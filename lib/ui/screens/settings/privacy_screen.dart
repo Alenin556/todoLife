@@ -179,6 +179,30 @@ class PrivacyScreen extends StatelessWidget {
                     },
                   ),
                   const Divider(height: 1),
+                  FutureBuilder<bool>(
+                    future: appState.deviceAuthAvailable(),
+                    builder: (context, snap) {
+                      final available = snap.data ?? false;
+                      return SwitchListTile(
+                        secondary: const Icon(Icons.fingerprint_outlined),
+                        title: const Text('Разблокировка по биометрии/паролю устройства'),
+                        subtitle: Text(
+                          available
+                              ? 'Опционально, вместо PIN'
+                              : 'Недоступно на этом устройстве',
+                        ),
+                        value: lock.biometricEnabled && available,
+                        onChanged: !available
+                            ? null
+                            : (v) async {
+                                await appState.updateLockSettings(
+                                  lock.copyWith(biometricEnabled: v),
+                                );
+                              },
+                      );
+                    },
+                  ),
+                  const Divider(height: 1),
                   ListTile(
                     leading: const Icon(Icons.timer_outlined),
                     title: const Text('Автоблокировка'),
