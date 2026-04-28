@@ -81,6 +81,7 @@ class AppState extends ChangeNotifier {
   Future<void> init() async {
     _themeMode = _storage.loadTheme();
     _lockSettings = _appLock.loadSettings();
+    _locked = _lockSettings.enabled; // lock immediately on cold start when enabled
     _dailyTasks = await _storage.loadTasks(TaskKind.daily);
     _longTasks = await _storage.loadTasks(TaskKind.long);
     _calendarEvents = await _storage.loadCalendarEvents();
@@ -93,11 +94,16 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> updateLockSettings(AppLockSettings s) async {
+    final wasEnabled = _lockSettings.enabled;
     _lockSettings = s;
     await _appLock.saveSettings(s);
     // If disabled, also unlock.
     if (!s.enabled) {
       _locked = false;
+      _lastBackgroundAt = null;
+    } else if (!wasEnabled && s.enabled) {
+      // Newly enabled: lock immediately.
+      _locked = true;
       _lastBackgroundAt = null;
     }
     notifyListeners();
