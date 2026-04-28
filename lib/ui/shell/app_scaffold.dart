@@ -26,10 +26,14 @@ class AppScaffold extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                 child: _WebTopNav(
                   currentIndex: navigationShell.currentIndex,
-                  onSelectIndex: (i) => navigationShell.goBranch(
-                    i,
-                    initialLocation: i == navigationShell.currentIndex,
-                  ),
+                  onSelectIndex: (i) {
+                    // ignore: discarded_futures
+                    appState.logAnalyticsEvent('nav_tab', params: {'index': i});
+                    navigationShell.goBranch(
+                      i,
+                      initialLocation: i == navigationShell.currentIndex,
+                    );
+                  },
                   appState: appState,
                 ),
               ),
@@ -44,10 +48,14 @@ class AppScaffold extends StatelessWidget {
       body: navigationShell,
       bottomNavigationBar: _BottomNav(
         currentIndex: navigationShell.currentIndex,
-        onTap: (i) => navigationShell.goBranch(
-          i,
-          initialLocation: i == navigationShell.currentIndex,
-        ),
+        onTap: (i) {
+          // ignore: discarded_futures
+          appState.logAnalyticsEvent('nav_tab', params: {'index': i});
+          navigationShell.goBranch(
+            i,
+            initialLocation: i == navigationShell.currentIndex,
+          );
+        },
       ),
     );
   }

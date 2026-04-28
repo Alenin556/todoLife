@@ -9,16 +9,22 @@ import 'models/salary_split.dart';
 import 'services/user_storage.dart';
 import 'services/notifications_service.dart';
 import 'services/app_lock_service.dart';
+import 'services/analytics_service.dart';
+import 'services/log_service.dart';
 import 'ui/screens/tasks/task_list_screen.dart';
 
 class AppState extends ChangeNotifier {
   AppState(this._storage, {NotificationsService? notifications})
       : _notifications = notifications,
-        _appLock = AppLockService(_storage);
+        _appLock = AppLockService(_storage),
+        _analytics = AnalyticsService(),
+        _logs = LogService(_storage);
 
   final UserStorage _storage;
   final NotificationsService? _notifications;
   final AppLockService _appLock;
+  final AnalyticsService _analytics;
+  final LogService _logs;
 
   ThemeMode _themeMode = ThemeMode.light;
   bool _ready = false;
@@ -47,6 +53,10 @@ class AppState extends ChangeNotifier {
   bool _locked = false;
   DateTime? _lastBackgroundAt;
   bool _showPrivacyOnboarding = false;
+  bool _consentCrashReports = false;
+  bool _consentAnalytics = false;
+  String _analyticsDay = '';
+  Map<String, int> _analyticsCounters = const {};
 
   ThemeMode get themeMode => _themeMode;
   bool get ready => _ready;
@@ -54,6 +64,9 @@ class AppState extends ChangeNotifier {
   AppLockSettings get lockSettings => _lockSettings;
   bool get locked => _locked;
   bool get showPrivacyOnboarding => _showPrivacyOnboarding;
+  bool get consentCrashReportsEnabled => _consentCrashReports;
+  bool get consentAnalyticsEnabled => _consentAnalytics;
+  List<LogEntry> get recentLogs => _logs.snapshot();
 
   List<TaskItem> tasks(TaskKind kind) {
     switch (kind) {
@@ -85,10 +98,15 @@ class AppState extends ChangeNotifier {
   List<CalendarEvent> get calendarEvents => _calendarEvents;
 
   Future<void> init() async {
+    await _logs.ensureLoaded();
     _themeMode = _storage.loadTheme();
     _locale = _storage.loadLanguageCode() == 'en'
         ? const Locale('en', 'US')
         : const Locale('ru', 'RU');
+    _consentCrashReports = _storage.loadConsentCrashReportsEnabled();
+    _consentAnalytics = _storage.loadConsentAnalyticsEnabled();
+    _analytics.setEnabled(_consentAnalytics);
+    await _initAnalyticsCountersAndMaybeSendDaily();
     _lockSettings = _appLock.loadSettings();
     // Lock requires PIN. If no PIN is set, keep app unlocked even if enabled.
     _locked = _lockSettings.enabled && await appLockHasPin();
@@ -103,7 +121,145 @@ class AppState extends ChangeNotifier {
     _showPrivacyOnboarding = (Platform.isAndroid || Platform.isIOS) &&
         !_storage.loadPrivacyOnboardingShown();
     _ready = true;
+    // Best-effort anonymous app-open signal.
+    // ignore: discarded_futures
+    logAnalyticsEvent('app_open');
     notifyListeners();
+  }
+
+  static String _ymd(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  Future<void> _initAnalyticsCountersAndMaybeSendDaily() async {
+    final now = DateTime.now();
+    final today = _ymd(now);
+    final storedDay = _storage.loadAnalyticsCountersDate();
+    final storedJson = _storage.loadAnalyticsCountersJson();
+
+    Map<String, int> stored = {};
+    if (storedJson != null && storedJson.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(storedJson);
+        if (decoded is Map) {
+          for (final e in decoded.entries) {
+            final k = e.key.toString();
+            final v = e.value;
+            final n = v is num ? v.toInt() : int.tryParse(v?.toString() ?? '');
+            if (n != null && n >= 0) stored[k] = n;
+          }
+        }
+      } catch (_) {
+        stored = {};
+      }
+    }
+
+    // If we have counters for a previous day, send a daily summary once on first open.
+    if (storedDay != null && storedDay.isNotEmpty && storedDay != today) {
+      if (_consentAnalytics) {
+        // ignore: discarded_futures
+        _analytics.logEvent(
+          'daily_summary',
+          params: {
+            'day': storedDay,
+            'counts': stored,
+          },
+        );
+      }
+      stored = {};
+    }
+
+    _analyticsDay = today;
+    _analyticsCounters = Map.unmodifiable(stored);
+    await _storage.saveAnalyticsCountersDate(today);
+    await _storage.saveAnalyticsCountersJson(jsonEncode(stored));
+  }
+
+  Future<void> setConsentCrashReportsEnabled(bool v) async {
+    _consentCrashReports = v;
+    await _storage.saveConsentCrashReportsEnabled(v);
+    notifyListeners();
+  }
+
+  Future<void> setConsentAnalyticsEnabled(bool v) async {
+    _consentAnalytics = v;
+    _analytics.setEnabled(v);
+    await _storage.saveConsentAnalyticsEnabled(v);
+    notifyListeners();
+  }
+
+  Future<void> logAnalyticsEvent(
+    String name, {
+    Map<String, Object?> params = const {},
+  }) async {
+    // Ensure day rollover is handled even if init() was long ago.
+    final today = _ymd(DateTime.now());
+    if (_analyticsDay.isEmpty) {
+      _analyticsDay = today;
+    }
+    if (_analyticsDay != today) {
+      final prevDay = _analyticsDay;
+      final prev = _analyticsCounters;
+      if (_consentAnalytics) {
+        // ignore: discarded_futures
+        _analytics.logEvent(
+          'daily_summary',
+          params: {
+            'day': prevDay,
+            'counts': prev,
+          },
+        );
+      }
+      _analyticsDay = today;
+      _analyticsCounters = const {};
+      await _storage.saveAnalyticsCountersDate(today);
+      await _storage.saveAnalyticsCountersJson(jsonEncode({}));
+    }
+
+    final next = <String, int>{..._analyticsCounters};
+    next[name] = (next[name] ?? 0) + 1;
+    _analyticsCounters = Map.unmodifiable(next);
+    // Best-effort persist (SharedPreferences).
+    // ignore: discarded_futures
+    _storage.saveAnalyticsCountersJson(jsonEncode(next));
+
+    await _analytics.logEvent(name, params: params);
+  }
+
+  void recordError(Object error, StackTrace stack, {String? context}) {
+    final ctx = (context == null || context.trim().isEmpty) ? '' : ' [$context]';
+    _logs.error('$error$ctx', stack: stack.toString());
+  }
+
+  void recordInfo(String message) {
+    _logs.info(message);
+  }
+
+  String buildBugReport({String? userMessage}) {
+    final buf = StringBuffer();
+    buf.writeln('todoLife bug report');
+    buf.writeln('ts: ${DateTime.now().toIso8601String()}');
+    buf.writeln('platform: ${Platform.operatingSystem}');
+    buf.writeln('locale: ${_locale.languageCode}');
+    buf.writeln('analytics_enabled: $_consentAnalytics');
+    buf.writeln('crash_reports_enabled: $_consentCrashReports');
+    buf.writeln('lock_enabled: ${_lockSettings.enabled}');
+    buf.writeln('autolock_seconds: ${_lockSettings.autoLockSeconds}');
+    buf.writeln('prevent_screenshots: ${_lockSettings.preventScreenshots}');
+    buf.writeln('biometric_enabled: ${_lockSettings.biometricEnabled}');
+    if (userMessage != null && userMessage.trim().isNotEmpty) {
+      buf.writeln('');
+      buf.writeln('user_message:');
+      buf.writeln(userMessage.trim());
+    }
+    buf.writeln('');
+    buf.writeln('recent_logs:');
+    for (final e in _logs.snapshot()) {
+      buf.writeln('[${e.tsIso}] ${e.level.name}: ${e.message}');
+      if (e.stack != null && e.stack!.trim().isNotEmpty) {
+        buf.writeln(e.stack);
+      }
+    }
+    return buf.toString();
   }
 
   Future<void> dismissPrivacyOnboarding() async {

@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences_windows/shared_preferences_windows.dart';
 
 import 'dart:io';
+import 'dart:ui';
 
 import 'app_state.dart';
 import 'router/app_router.dart';
@@ -33,6 +34,17 @@ Future<void> main() async {
     notifications = await NotificationsService.createAndInit();
   }
   final appState = AppState(storage, notifications: notifications);
+
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    final st = details.stack ?? StackTrace.current;
+    appState.recordError(details.exception, st, context: 'FlutterError');
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    appState.recordError(error, stack, context: 'PlatformDispatcher');
+    return false; // keep default behavior
+  };
+
   await appState.init();
 
   // Android privacy hardening: prevent screenshots if enabled.

@@ -12,6 +12,55 @@ enum _DocKind { privacy, terms, consent }
 class PrivacyScreen extends StatelessWidget {
   const PrivacyScreen({super.key});
 
+  Future<void> _sendBugReport(BuildContext context, AppState appState, {required bool isEn}) async {
+    final ctrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isEn ? 'Bug report' : 'Баг-репорт'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              isEn
+                  ? 'Describe what happened. We will copy a diagnostic report to clipboard.'
+                  : 'Опишите проблему. Мы скопируем диагностический отчёт в буфер обмена.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              minLines: 3,
+              maxLines: 8,
+              decoration: InputDecoration(
+                labelText: isEn ? 'Description' : 'Описание',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(isEn ? 'Cancel' : 'Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(isEn ? 'Copy' : 'Скопировать'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final report = appState.buildBugReport(userMessage: ctrl.text);
+    await Clipboard.setData(ClipboardData(text: report));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(isEn ? 'Bug report copied' : 'Баг-репорт скопирован'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = AppStateScope.of(context);
@@ -91,7 +140,15 @@ class PrivacyScreen extends StatelessWidget {
     );
     return SafeArea(
       child: Scaffold(
-        appBar: AppBar(title: const Text('Конфиденциальность')),
+        appBar: AppBar(
+          title: const Text('Конфиденциальность'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              child: Text(isEn ? 'Close' : 'Закрыть'),
+            ),
+          ],
+        ),
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -141,6 +198,47 @@ class PrivacyScreen extends StatelessWidget {
                         ),
                       ),
                     ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Column(
+                children: [
+                  SwitchListTile(
+                    secondary: const Icon(Icons.analytics_outlined),
+                    title: Text(isEn ? 'Anonymous analytics' : 'Анонимная аналитика'),
+                    subtitle: Text(
+                      isEn
+                          ? 'Aggregated usage events (no tasks text)'
+                          : 'Агрегированные события использования (без текста задач)',
+                    ),
+                    value: appState.consentAnalyticsEnabled,
+                    onChanged: (v) => appState.setConsentAnalyticsEnabled(v),
+                  ),
+                  const Divider(height: 1),
+                  SwitchListTile(
+                    secondary: const Icon(Icons.bug_report_outlined),
+                    title: Text(isEn ? 'Crash reports' : 'Отчёты о сбоях'),
+                    subtitle: Text(
+                      isEn
+                          ? 'Technical diagnostics to fix errors'
+                          : 'Техническая диагностика для исправления ошибок',
+                    ),
+                    value: appState.consentCrashReportsEnabled,
+                    onChanged: (v) => appState.setConsentCrashReportsEnabled(v),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.report_outlined),
+                    title: Text(isEn ? 'Send bug report' : 'Отправить баг-репорт'),
+                    subtitle: Text(
+                      isEn
+                          ? 'Copy diagnostic report with recent logs'
+                          : 'Скопировать отчёт с последними логами',
+                    ),
+                    onTap: () => _sendBugReport(context, appState, isEn: isEn),
                   ),
                 ],
               ),

@@ -33,6 +33,11 @@ class UserStorage {
   static const _kPrivacyAutoLockSeconds = 'privacy_autolock_seconds_v1';
   static const _kPrivacyPreventScreenshots = 'privacy_prevent_screenshots_v1';
   static const _kPrivacyBiometricEnabled = 'privacy_biometric_enabled_v1';
+  static const _kConsentCrashReportsEnabled = 'consent_crash_reports_enabled_v1';
+  static const _kConsentAnalyticsEnabled = 'consent_analytics_enabled_v1';
+  static const _kAnalyticsCountersDate = 'analytics_counters_date_v1';
+  static const _kAnalyticsCountersJson = 'analytics_counters_json_v1';
+  static const _kBugLogJson = 'bug_log_json_v1';
 
   // Sensitive: PIN hash (if user enables app PIN).
   static const _kPrivacyPinHash = 'privacy_pin_hash_v1';
@@ -143,6 +148,27 @@ class UserStorage {
       _p.getBool(_kPrivacyBiometricEnabled) ?? false;
   Future<void> savePrivacyBiometricEnabled(bool v) =>
       _p.setBool(_kPrivacyBiometricEnabled, v);
+
+  bool loadConsentCrashReportsEnabled() =>
+      _p.getBool(_kConsentCrashReportsEnabled) ?? false;
+  Future<void> saveConsentCrashReportsEnabled(bool v) =>
+      _p.setBool(_kConsentCrashReportsEnabled, v);
+
+  bool loadConsentAnalyticsEnabled() =>
+      _p.getBool(_kConsentAnalyticsEnabled) ?? false;
+  Future<void> saveConsentAnalyticsEnabled(bool v) =>
+      _p.setBool(_kConsentAnalyticsEnabled, v);
+
+  String? loadAnalyticsCountersDate() => _p.getString(_kAnalyticsCountersDate);
+  Future<void> saveAnalyticsCountersDate(String ymd) =>
+      _p.setString(_kAnalyticsCountersDate, ymd);
+
+  String? loadAnalyticsCountersJson() => _p.getString(_kAnalyticsCountersJson);
+  Future<void> saveAnalyticsCountersJson(String raw) =>
+      _p.setString(_kAnalyticsCountersJson, raw);
+
+  String? loadBugLogJson() => _p.getString(_kBugLogJson);
+  Future<void> saveBugLogJson(String raw) => _p.setString(_kBugLogJson, raw);
 
   Future<String?> loadPrivacyPinHash() => _readSensitive(_kPrivacyPinHash);
   Future<void> savePrivacyPinHash(String hash) => _writeSensitive(_kPrivacyPinHash, hash);
