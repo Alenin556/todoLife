@@ -14,11 +14,15 @@ import 'services/log_service.dart';
 import 'ui/screens/tasks/task_list_screen.dart';
 
 class AppState extends ChangeNotifier {
-  AppState(this._storage, {NotificationsService? notifications})
-      : _notifications = notifications,
+  AppState(
+    this._storage, {
+    NotificationsService? notifications,
+    AnalyticsService? analytics,
+    LogService? logs,
+  })  : _notifications = notifications,
         _appLock = AppLockService(_storage),
-        _analytics = AnalyticsService(),
-        _logs = LogService(_storage);
+        _analytics = analytics ?? AnalyticsService(),
+        _logs = logs ?? LogService(_storage);
 
   final UserStorage _storage;
   final NotificationsService? _notifications;
@@ -220,7 +224,7 @@ class AppState extends ChangeNotifier {
     _analyticsCounters = Map.unmodifiable(next);
     // Best-effort persist (SharedPreferences).
     // ignore: discarded_futures
-    _storage.saveAnalyticsCountersJson(jsonEncode(next));
+    await _storage.saveAnalyticsCountersJson(jsonEncode(next));
 
     await _analytics.logEvent(name, params: params);
   }
