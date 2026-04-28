@@ -69,6 +69,7 @@ class _AppLockScreenState extends State<AppLockScreen> {
     final appState = AppStateScope.of(context);
     _init(appState);
 
+    final initializing = _hasPin == null || _deviceAuthAvailable == null;
     final hasPin = _hasPin ?? false;
     final dev = _deviceAuthAvailable ?? false;
 
@@ -98,6 +99,11 @@ class _AppLockScreenState extends State<AppLockScreen> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 12),
+                      if (initializing)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
                       if (hasPin)
                         TextField(
                           controller: _pin,
