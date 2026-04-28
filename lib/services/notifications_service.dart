@@ -5,6 +5,7 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../models/calendar_event.dart';
+import '../models/task_item.dart';
 
 class NotificationsService {
   NotificationsService(this._plugin);
@@ -31,12 +32,70 @@ class NotificationsService {
 
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const initSettings = InitializationSettings(android: androidInit);
-    await _plugin.initialize(settings: initSettings);
+    await _plugin.initialize(
+      settings: initSettings,
+      onDidReceiveNotificationResponse: (r) async {
+        // Close action for summary notification.
+        if (r.actionId == 'next' && r.id != null) {
+          await _plugin.cancel(id: r.id!);
+        }
+      },
+    );
 
     // Android 13+ runtime permission.
     final android = _plugin.resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin>();
     await android?.requestNotificationsPermission();
+  }
+
+  Future<void> showDailyTasksSummary({
+    required DateTime day,
+    required List<TaskItem> tasks,
+  }) async {
+    if (kIsWeb) return;
+    if (tasks.isEmpty) return;
+
+    final dateKey =
+        '${day.year.toString().padLeft(4, '0')}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+    final id = _stableId('daily_summary:$dateKey');
+
+    final lines = tasks
+        .where((t) => t.text.trim().isNotEmpty)
+        .take(7)
+        .map((t) => '• ${t.text.trim()}')
+        .toList(growable: false);
+    final extra = tasks.length - lines.length;
+    final body = [
+      ...lines,
+      if (extra > 0) '…и ещё $extra',
+    ].join('\n');
+
+    final androidDetails = AndroidNotificationDetails(
+      'daily_tasks_summary',
+      'Daily tasks summary',
+      channelDescription: 'Daily summary shown on first app open per day',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+      actions: const [
+        AndroidNotificationAction(
+          'next',
+          'Далее',
+          showsUserInterface: false,
+          cancelNotification: true,
+        ),
+      ],
+    );
+
+    final details = NotificationDetails(android: androidDetails);
+    await _plugin.show(
+      id: id,
+      title: 'Задачи на сегодня',
+      body: body,
+      notificationDetails: details,
+      payload: dateKey,
+    );
   }
 
   Future<void> scheduleOrUpdateForCalendarEvent(CalendarEvent e) async {

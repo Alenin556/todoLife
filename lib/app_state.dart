@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 
+import 'dart:convert';
+
 import 'models/task_item.dart';
 import 'models/calendar_event.dart';
 import 'models/salary_split.dart';
 import 'services/user_storage.dart';
 import 'services/notifications_service.dart';
+import 'services/app_lock_service.dart';
 import 'ui/screens/tasks/task_list_screen.dart';
 
 class AppState extends ChangeNotifier {
   AppState(this._storage, {NotificationsService? notifications})
-      : _notifications = notifications;
+      : _notifications = notifications,
+        _appLock = AppLockService(_storage);
 
   final UserStorage _storage;
   final NotificationsService? _notifications;
+  final AppLockService _appLock;
 
   ThemeMode _themeMode = ThemeMode.light;
   bool _ready = false;
@@ -30,8 +35,19 @@ class AppState extends ChangeNotifier {
       );
   List<SalarySplitSaved> _savedSalarySplits = const [];
 
+  AppLockSettings _lockSettings = const AppLockSettings(
+    enabled: false,
+    autoLockSeconds: 0,
+    preventScreenshots: true,
+  );
+
+  bool _locked = false;
+  DateTime? _lastBackgroundAt;
+
   ThemeMode get themeMode => _themeMode;
   bool get ready => _ready;
+  AppLockSettings get lockSettings => _lockSettings;
+  bool get locked => _locked;
 
   List<TaskItem> tasks(TaskKind kind) {
     switch (kind) {
@@ -48,7 +64,10 @@ class AppState extends ChangeNotifier {
     final last = _storage.loadDailyTasksDate();
     final lastDay = last == null ? null : DateTime(last.year, last.month, last.day);
     if (lastDay == null || lastDay.isBefore(today)) {
-      _dailyTasks = const [];
+      // New day: переносим незавершённые задачи на сегодня (выполненные убираем).
+      final carried =
+          _dailyTasks.where((t) => !t.done && t.id.isNotEmpty).toList(growable: false);
+      _dailyTasks = carried;
       await _storage.saveTasks(TaskKind.daily, _dailyTasks);
       await _storage.saveDailyTasksDate(today);
       notifyListeners();
@@ -61,14 +80,80 @@ class AppState extends ChangeNotifier {
 
   Future<void> init() async {
     _themeMode = _storage.loadTheme();
-    _dailyTasks = _storage.loadTasks(TaskKind.daily);
-    _longTasks = _storage.loadTasks(TaskKind.long);
-    _calendarEvents = _storage.loadCalendarEvents();
+    _lockSettings = _appLock.loadSettings();
+    _dailyTasks = await _storage.loadTasks(TaskKind.daily);
+    _longTasks = await _storage.loadTasks(TaskKind.long);
+    _calendarEvents = await _storage.loadCalendarEvents();
     await ensureDailyTasksFresh();
-    _salarySplitDraft = _storage.loadSalarySplitDraft();
-    _savedSalarySplits = _storage.loadSavedSalarySplits();
+    await _maybeShowDailySummaryOnFirstOpen();
+    _salarySplitDraft = await _storage.loadSalarySplitDraft();
+    _savedSalarySplits = await _storage.loadSavedSalarySplits();
     _ready = true;
     notifyListeners();
+  }
+
+  Future<void> updateLockSettings(AppLockSettings s) async {
+    _lockSettings = s;
+    await _appLock.saveSettings(s);
+    // If disabled, also unlock.
+    if (!s.enabled) {
+      _locked = false;
+      _lastBackgroundAt = null;
+    }
+    notifyListeners();
+  }
+
+  Future<bool> appLockHasPin() => _appLock.hasPin();
+  Future<void> setAppPin(String pin) => _appLock.setPin(pin);
+  Future<void> clearAppPin() => _appLock.clearPin();
+  Future<bool> verifyAppPin(String pin) => _appLock.verifyPin(pin);
+  Future<bool> authenticateWithDevice() => _appLock.authenticateWithDevice();
+  Future<bool> deviceAuthAvailable() => _appLock.deviceAuthAvailable();
+
+  void onAppBackgrounded() {
+    if (!_lockSettings.enabled) return;
+    _lastBackgroundAt = DateTime.now();
+    if (_lockSettings.autoLockSeconds == 0) {
+      _locked = true;
+      notifyListeners();
+    }
+  }
+
+  void onAppResumed() {
+    if (!_lockSettings.enabled) return;
+    final bg = _lastBackgroundAt;
+    if (bg == null) {
+      // App was cold-started; lock if enabled.
+      _locked = true;
+      notifyListeners();
+      return;
+    }
+    final elapsed = DateTime.now().difference(bg).inSeconds;
+    if (elapsed >= _lockSettings.autoLockSeconds) {
+      _locked = true;
+      notifyListeners();
+    }
+  }
+
+  void unlock() {
+    _locked = false;
+    _lastBackgroundAt = null;
+    notifyListeners();
+  }
+
+  Future<void> _maybeShowDailySummaryOnFirstOpen() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final lastShown = _storage.loadDailySummaryShownDate();
+    final lastShownDay = lastShown == null
+        ? null
+        : DateTime(lastShown.year, lastShown.month, lastShown.day);
+
+    if (lastShownDay != null && !lastShownDay.isBefore(today)) return;
+
+    // Mark as shown for today (even if there are no tasks), so it happens once per day.
+    await _storage.saveDailySummaryShownDate(today);
+    await _notifications?.showDailyTasksSummary(day: today, tasks: _dailyTasks);
   }
 
   Future<void> setTheme(ThemeMode mode) async {
@@ -313,6 +398,37 @@ class AppState extends ChangeNotifier {
     _savedSalarySplits =
         _savedSalarySplits.where((e) => e.savedAtMs != savedAtMs).toList(growable: false);
     await _storage.saveSavedSalarySplits(_savedSalarySplits);
+    notifyListeners();
+  }
+
+  String exportUserDataJson() {
+    // NOTE: should not be sent anywhere automatically. It's for user-controlled export.
+    final map = <String, Object?>{
+      'version': 1,
+      'exportedAtMs': DateTime.now().millisecondsSinceEpoch,
+      'dailyTasks': _dailyTasks.map((t) => t.toJson()).toList(),
+      'longTasks': _longTasks.map((t) => t.toJson()).toList(),
+      'calendarEvents': _calendarEvents.map((e) => e.toJson()).toList(),
+      'salarySplitDraft': _salarySplitDraft.toJson(),
+      'savedSalarySplits': _savedSalarySplits.map((s) => s.toJson()).toList(),
+    };
+    return const JsonEncoder.withIndent('  ').convert(map);
+  }
+
+  Future<void> wipeAllUserData() async {
+    await _storage.wipeAllUserData();
+    _dailyTasks = const [];
+    _longTasks = const [];
+    _calendarEvents = const [];
+    _salarySplitDraft = const SalarySplitDraft(
+      salary: 0,
+      percents: {},
+      customAmounts: {},
+      mode: SalarySplitMode.percent,
+      manualAmounts: {},
+    );
+    _savedSalarySplits = const [];
+    _ready = true;
     notifyListeners();
   }
 

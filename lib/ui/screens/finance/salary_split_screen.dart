@@ -18,6 +18,7 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
   bool _initialized = false;
   final _money = NumberFormat('#,##0', 'ru_RU');
   final Map<String, TextEditingController> _amountCtrls = {};
+  final _percentFmt = NumberFormat('##0.#', 'ru_RU');
 
   static const _required = <String>[
     'Кредиты',
@@ -75,6 +76,11 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
 
   double _amount(double salary, int percent) => salary * percent / 100.0;
 
+  double _percentOf(double salary, double amount) {
+    if (salary <= 0) return 0;
+    return (amount / salary) * 100.0;
+  }
+
   Map<String, double> _customExceedings({
     required double salary,
     required double allocatedByPercents,
@@ -114,10 +120,21 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
     final allocatedByPercents = _amount(draft.salary, totalPercent);
     final customTotal =
         draft.customAmounts.values.fold<double>(0, (a, b) => a + b);
-    final manualTotal =
-        draft.manualAmounts.values.fold<double>(0, (a, b) => a + b);
+
+    // Totals should reflect what's on screen immediately, even while async
+    // persistence is in-flight. So we sum the current textfield values.
+    final manualTotal = () {
+      var sum = 0.0;
+      for (final cat in [..._required, ..._optional]) {
+        final ctrl = _amountCtrl(cat, draft.manualAmounts[cat] ?? 0);
+        sum += _parse(ctrl.text);
+      }
+      return sum;
+    }();
     // Single-screen editor always shows manual amounts; percents are helpers.
     final allocated = manualTotal;
+    final allocatedTotal = allocated + customTotal;
+    final allocatedPercent = _percentOf(draft.salary, allocatedTotal);
     final diff = draft.salary - allocated - customTotal;
     final exceedings = _customExceedings(
       salary: draft.salary,
@@ -216,6 +233,7 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
               percents: percents,
               percentOptions: _percentOptions,
               controllerFor: (cat) => _amountCtrl(cat, draft.manualAmounts[cat] ?? 0),
+              formatMoney: _fmt,
               onChangedAmount: (cat, v) async {
                 // Manual edit overrides percent helper for this category.
                 await appState.setSalaryAmount(cat, v);
@@ -322,7 +340,12 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Распределено: $totalPercent%  (${_fmt(allocatedByPercents)})'),
+                    Text(
+                      'Распределено: ${_percentFmt.format(allocatedPercent)}%  (${_fmt(allocatedTotal)})',
+                    ),
+                    const SizedBox(height: 6),
+                    if (totalPercent > 0)
+                      Text('Подстановка по %: $totalPercent%  (${_fmt(allocatedByPercents)})'),
                     const SizedBox(height: 6),
                     Text('Суммами: ${_fmt(allocated)}'),
                     const SizedBox(height: 8),
@@ -357,6 +380,7 @@ class _SalarySplitScreenState extends State<SalarySplitScreen> {
                 savedAtMs: r.savedAtMs,
                 salary: r.draft.salary,
                 percents: r.draft.percents,
+                manualAmounts: r.draft.manualAmounts,
                 customAmounts: r.draft.customAmounts,
                 formatMoney: _fmt,
                 onDelete: () async {
@@ -393,6 +417,7 @@ class _SavedBudgetTile extends StatelessWidget {
     required this.savedAtMs,
     required this.salary,
     required this.percents,
+    required this.manualAmounts,
     required this.customAmounts,
     required this.formatMoney,
     required this.onDelete,
@@ -401,6 +426,7 @@ class _SavedBudgetTile extends StatelessWidget {
   final int savedAtMs;
   final double salary;
   final Map<String, int> percents;
+  final Map<String, double> manualAmounts;
   final Map<String, double> customAmounts;
   final String Function(double) formatMoney;
   final VoidCallback onDelete;
@@ -409,14 +435,27 @@ class _SavedBudgetTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalPercent = percents.values.fold<int>(0, (a, b) => a + b);
-    final allocated = _amount(salary, totalPercent);
+    final manualTotal = manualAmounts.values.fold<double>(0, (a, b) => a + b);
     final customTotal =
         customAmounts.values.fold<double>(0, (a, b) => a + b);
-    final diff = salary - allocated - customTotal;
+    final allocated = manualTotal + customTotal;
+    final allocatedPercent = salary <= 0 ? 0.0 : (allocated / salary) * 100.0;
+    final diff = salary - allocated;
 
-    final entries = percents.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+    const requiredCats = <String>[
+      'Кредиты',
+      'Инвестиции',
+      'Долги',
+      'Кошелек',
+    ];
+    const optionalCats = <String>[
+      'Покупки',
+      'Еда',
+      'КВ',
+    ];
+    final builtIns = [...requiredCats, ...optionalCats];
+
+    final percentFmt = NumberFormat('##0.#', 'ru_RU');
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -441,18 +480,32 @@ class _SavedBudgetTile extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-            Text('Распределено: $totalPercent%  (${formatMoney(allocated)})'),
+            Text(
+              'Распределено: ${percentFmt.format(allocatedPercent)}%  (${formatMoney(allocated)})',
+            ),
             if (customAmounts.isNotEmpty)
               Text('Пользовательские: ${formatMoney(customTotal)}'),
             if (diff > 0) Text('Остаток: ${formatMoney(diff)}'),
             const SizedBox(height: 8),
-            for (final e in entries)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  '${e.key}: ${e.value}%  (${formatMoney(_amount(salary, e.value))})',
+            for (final cat in builtIns)
+              if ((manualAmounts[cat] ?? 0) > 0 ||
+                  ((manualAmounts.isEmpty) && (percents[cat] ?? 0) > 0))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: () {
+                    final manual = manualAmounts[cat] ?? 0;
+                    if (manual > 0) {
+                      final p = salary <= 0 ? 0.0 : (manual / salary) * 100.0;
+                      return Text(
+                        '$cat: ${percentFmt.format(p)}%  (${formatMoney(manual)})',
+                      );
+                    }
+                    final percent = percents[cat] ?? 0;
+                    return Text(
+                      '$cat: $percent%  (${formatMoney(_amount(salary, percent))})',
+                    );
+                  }(),
                 ),
-              ),
             for (final e in customAmounts.entries)
               Padding(
                 padding: const EdgeInsets.only(bottom: 4),
@@ -522,6 +575,7 @@ class _AmountsEditorCard extends StatelessWidget {
     required this.onPickPercent,
     required this.onClear,
     required this.parse,
+    required this.formatMoney,
   });
 
   final List<String> requiredCategories;
@@ -534,6 +588,7 @@ class _AmountsEditorCard extends StatelessWidget {
   final void Function(String category, int percent) onPickPercent;
   final void Function(String category) onClear;
   final double Function(String) parse;
+  final String Function(double) formatMoney;
 
   @override
   Widget build(BuildContext context) {
@@ -554,6 +609,7 @@ class _AmountsEditorCard extends StatelessWidget {
                 percentOptions: percentOptions,
                 controller: controllerFor(cat),
                 parse: parse,
+                formatMoney: formatMoney,
                 onChangedAmount: (v) => onChangedAmount(cat, v),
                 onPickPercent: (p) => onPickPercent(cat, p),
                 onClear: () => onClear(cat),
@@ -575,6 +631,7 @@ class _AmountRowWithPercents extends StatelessWidget {
     required this.percentOptions,
     required this.controller,
     required this.parse,
+    required this.formatMoney,
     required this.onChangedAmount,
     required this.onPickPercent,
     required this.onClear,
@@ -586,6 +643,7 @@ class _AmountRowWithPercents extends StatelessWidget {
   final List<int> percentOptions;
   final TextEditingController controller;
   final double Function(String) parse;
+  final String Function(double) formatMoney;
   final ValueChanged<double> onChangedAmount;
   final ValueChanged<int> onPickPercent;
   final VoidCallback onClear;
@@ -593,6 +651,9 @@ class _AmountRowWithPercents extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fmt = NumberFormat('#,##0', 'ru_RU');
+    final percentFmt = NumberFormat('##0.#', 'ru_RU');
+    final manualAmount = parse(controller.text);
+    final manualPercent = salary <= 0 ? 0.0 : (manualAmount / salary) * 100.0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -606,6 +667,13 @@ class _AmountRowWithPercents extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            if (manualAmount > 0 && salary > 0) ...[
+              const SizedBox(width: 8),
+              Text(
+                '${percentFmt.format(manualPercent)}%',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
             const SizedBox(width: 12),
             SizedBox(
               width: 150,
@@ -654,6 +722,11 @@ class _AmountRowWithPercents extends StatelessWidget {
           'Подстановка: ${currentPercent == 0 ? '—' : '$currentPercent% (${fmt.format(salary * currentPercent / 100.0)})'}',
           style: Theme.of(context).textTheme.bodySmall,
         ),
+        if (manualAmount > 0)
+          Text(
+            'Введено: ${formatMoney(manualAmount)}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
       ],
     );
   }

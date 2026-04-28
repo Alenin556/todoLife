@@ -9,6 +9,7 @@ import '../ui/screens/calendar/calendar_screen.dart';
 import '../ui/screens/home/home_screen.dart';
 import '../ui/screens/quotes_home_screen.dart';
 import '../ui/screens/settings/settings_screen.dart';
+import '../ui/screens/settings/privacy_screen.dart';
 import '../ui/screens/tasks/task_edit_screen.dart';
 import '../ui/screens/tasks/task_list_screen.dart';
 
@@ -85,6 +86,13 @@ class AppRouter {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: '/settings/privacy',
+        builder: (context, state) => AppStateScope(
+          notifier: appState,
+          child: const PrivacyScreen(),
+        ),
       ),
       GoRoute(
         path: '/tasks/edit',

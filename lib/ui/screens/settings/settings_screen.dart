@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../scope/app_state_scope.dart';
 
@@ -54,6 +55,20 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.privacy_tip_outlined),
+                  title: const Text('Конфиденциальность'),
+                  subtitle: const Text('Политика, условия, управление данными'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => context.go('/settings/privacy'),
+                ),
+              ],
             ),
           ),
         ],

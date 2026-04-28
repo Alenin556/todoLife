@@ -12,6 +12,8 @@ import 'router/app_router.dart';
 import 'services/notifications_service.dart';
 import 'services/user_storage.dart';
 import 'ui/theme/app_theme.dart';
+import 'ui/screens/settings/app_lock_screen.dart';
+import 'services/android_secure_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,6 +32,10 @@ Future<void> main() async {
   }
   final appState = AppState(storage, notifications: notifications);
   await appState.init();
+
+  // Android privacy hardening: prevent screenshots if enabled.
+  await AndroidSecureScreen.setSecure(appState.lockSettings.preventScreenshots);
+
   runApp(MyApp(appState: appState));
 }
 
@@ -44,6 +50,24 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late final AppRouter _appRouter = AppRouter(widget.appState);
+  AppLifecycleState? _lifecycle;
+  late final _LifecycleObserver _observer =
+      _LifecycleObserver(widget.appState, onState: (s) {
+        if (!mounted) return;
+        setState(() => _lifecycle = s);
+      });
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(_observer);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(_observer);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,8 +97,51 @@ class _MyAppState extends State<MyApp> {
           ],
           locale: const Locale('ru', 'RU'),
           routerConfig: _appRouter.router,
+          builder: (context, child) {
+            final locked = widget.appState.lockSettings.enabled && widget.appState.locked;
+            // When app is backgrounded/inactive, cover UI to hide it in app switcher.
+            final shouldObscure = _lifecycle == AppLifecycleState.inactive ||
+                _lifecycle == AppLifecycleState.paused;
+            return Stack(
+              children: [
+                if (child != null) child,
+                if (shouldObscure)
+                  const Positioned.fill(
+                    child: ColoredBox(color: Colors.black),
+                  ),
+                if (locked)
+                  const Positioned.fill(
+                    child: Material(
+                      color: Colors.black,
+                      child: AppLockScreen(),
+                    ),
+                  ),
+              ],
+            );
+          },
         );
       },
     );
+  }
+}
+
+class _LifecycleObserver extends WidgetsBindingObserver {
+  _LifecycleObserver(this.appState, {required this.onState});
+  final AppState appState;
+  final void Function(AppLifecycleState) onState;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    onState(state);
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        appState.onAppBackgrounded();
+      case AppLifecycleState.resumed:
+        appState.onAppResumed();
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.detached:
+        break;
+    }
   }
 }
