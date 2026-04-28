@@ -17,6 +17,7 @@ class UserStorage {
 
   static const _kTheme = 'app_theme_mode';
   static const _kLanguage = 'app_language_v1'; // 'ru' | 'en'
+  static const _kPrivacyOnboardingShown = 'privacy_onboarding_shown_v1';
   static const _kTasksDaily = 'tasks_daily_v1';
   static const _kTasksLong = 'tasks_long_v1';
   static const _kTasksDailyDate = 'tasks_daily_date_v1';
@@ -70,6 +71,11 @@ class UserStorage {
     final v = code == 'en' ? 'en' : 'ru';
     await _p.setString(_kLanguage, v);
   }
+
+  bool loadPrivacyOnboardingShown() =>
+      _p.getBool(_kPrivacyOnboardingShown) ?? false;
+  Future<void> savePrivacyOnboardingShown(bool v) =>
+      _p.setBool(_kPrivacyOnboardingShown, v);
 
   Future<List<TaskItem>> loadTasks(TaskKind kind) async {
     final key = _tasksKey(kind);

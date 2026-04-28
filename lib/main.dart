@@ -15,6 +15,7 @@ import 'ui/theme/app_theme.dart';
 import 'ui/screens/settings/app_lock_screen.dart';
 import 'services/android_secure_screen.dart';
 import 'ui/scope/app_state_scope.dart';
+import 'ui/screens/settings/privacy_onboarding_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -104,12 +105,23 @@ class _MyAppState extends State<MyApp> {
             // When app is backgrounded/inactive, cover UI to hide it in app switcher.
             final shouldObscure = _lifecycle == AppLifecycleState.inactive ||
                 _lifecycle == AppLifecycleState.paused;
+            final showOnboarding = widget.appState.showPrivacyOnboarding;
             return Stack(
               children: [
                 if (child != null) child,
                 if (shouldObscure)
                   const Positioned.fill(
                     child: ColoredBox(color: Colors.black),
+                  ),
+                if (showOnboarding)
+                  Positioned.fill(
+                    child: AppStateScope(
+                      notifier: widget.appState,
+                      child: const Material(
+                        color: Colors.black,
+                        child: PrivacyOnboardingScreen(),
+                      ),
+                    ),
                   ),
                 if (locked)
                   Positioned.fill(

@@ -32,7 +32,10 @@ class PrivacyScreen extends StatelessWidget {
                 final kind = hasPin ? _PinFlowKind.change : _PinFlowKind.create;
                 final ok = await Navigator.of(context).push<bool>(
                   MaterialPageRoute(
-                    builder: (_) => _PinFlowScreen(kind: kind),
+                    builder: (_) => AppStateScope(
+                      notifier: appState,
+                      child: _PinFlowScreen(kind: kind),
+                    ),
                   ),
                 );
                 if (!context.mounted) return;
@@ -60,8 +63,10 @@ class PrivacyScreen extends StatelessWidget {
                 onTap: () async {
                   final ok = await Navigator.of(context).push<bool>(
                     MaterialPageRoute(
-                      builder: (_) =>
-                          const _PinFlowScreen(kind: _PinFlowKind.change),
+                      builder: (_) => AppStateScope(
+                        notifier: appState,
+                        child: const _PinFlowScreen(kind: _PinFlowKind.change),
+                      ),
                     ),
                   );
                   if (!context.mounted) return;
@@ -99,7 +104,10 @@ class PrivacyScreen extends StatelessWidget {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => _DocScreen(kind: _DocKind.privacy, isEn: isEn),
+                        builder: (_) => AppStateScope(
+                          notifier: appState,
+                          child: _DocScreen(kind: _DocKind.privacy, isEn: isEn),
+                        ),
                       ),
                     ),
                   ),
@@ -110,7 +118,10 @@ class PrivacyScreen extends StatelessWidget {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => _DocScreen(kind: _DocKind.terms, isEn: isEn),
+                        builder: (_) => AppStateScope(
+                          notifier: appState,
+                          child: _DocScreen(kind: _DocKind.terms, isEn: isEn),
+                        ),
                       ),
                     ),
                   ),
@@ -124,7 +135,10 @@ class PrivacyScreen extends StatelessWidget {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => _DocScreen(kind: _DocKind.consent, isEn: isEn),
+                        builder: (_) => AppStateScope(
+                          notifier: appState,
+                          child: _DocScreen(kind: _DocKind.consent, isEn: isEn),
+                        ),
                       ),
                     ),
                   ),

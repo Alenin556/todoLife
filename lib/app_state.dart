@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'models/task_item.dart';
 import 'models/calendar_event.dart';
@@ -44,12 +45,14 @@ class AppState extends ChangeNotifier {
 
   bool _locked = false;
   DateTime? _lastBackgroundAt;
+  bool _showPrivacyOnboarding = false;
 
   ThemeMode get themeMode => _themeMode;
   bool get ready => _ready;
   Locale get locale => _locale;
   AppLockSettings get lockSettings => _lockSettings;
   bool get locked => _locked;
+  bool get showPrivacyOnboarding => _showPrivacyOnboarding;
 
   List<TaskItem> tasks(TaskKind kind) {
     switch (kind) {
@@ -100,7 +103,16 @@ class AppState extends ChangeNotifier {
     await _maybeShowDailySummaryOnFirstOpen();
     _salarySplitDraft = await _storage.loadSalarySplitDraft();
     _savedSalarySplits = await _storage.loadSavedSalarySplits();
+    // Show onboarding only on mobile platforms.
+    _showPrivacyOnboarding = (Platform.isAndroid || Platform.isIOS) &&
+        !_storage.loadPrivacyOnboardingShown();
     _ready = true;
+    notifyListeners();
+  }
+
+  Future<void> dismissPrivacyOnboarding() async {
+    _showPrivacyOnboarding = false;
+    await _storage.savePrivacyOnboardingShown(true);
     notifyListeners();
   }
 
