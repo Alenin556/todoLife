@@ -14,6 +14,73 @@ class PrivacyScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = AppStateScope.of(context);
     final lock = appState.lockSettings;
+    final pinStatus = FutureBuilder<bool>(
+      future: appState.appLockHasPin(),
+      builder: (context, snap) {
+        final hasPin = snap.data ?? false;
+        return Column(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.pin_outlined),
+              title: Text(hasPin ? 'PIN-код' : 'Создать PIN-код'),
+              subtitle: Text(hasPin ? 'Изменить PIN' : 'Установить PIN для блокировки'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                final kind = hasPin ? _PinFlowKind.change : _PinFlowKind.create;
+                final ok = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (_) => _PinFlowScreen(kind: kind),
+                  ),
+                );
+                if (!context.mounted) return;
+                if (ok == true) {
+                  final snack = SnackBar(
+                    content: const Text('PIN-код установлен'),
+                    action: SnackBarAction(
+                      label: 'Далее',
+                      onPressed: () {},
+                    ),
+                  );
+                  ScaffoldMessenger.of(context)
+                    ..clearSnackBars()
+                    ..showSnackBar(snack);
+                }
+              },
+            ),
+            if (hasPin) ...[
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.refresh_outlined),
+                title: const Text('Создать новый PIN-код'),
+                subtitle: const Text('Потребуется ввести старый PIN'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () async {
+                  final ok = await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          const _PinFlowScreen(kind: _PinFlowKind.change),
+                    ),
+                  );
+                  if (!context.mounted) return;
+                  if (ok == true) {
+                    final snack = SnackBar(
+                      content: const Text('PIN-код обновлён'),
+                      action: SnackBarAction(
+                        label: 'Далее',
+                        onPressed: () {},
+                      ),
+                    );
+                    ScaffoldMessenger.of(context)
+                      ..clearSnackBars()
+                      ..showSnackBar(snack);
+                  }
+                },
+              ),
+            ],
+          ],
+        );
+      },
+    );
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(title: const Text('Конфиденциальность')),
@@ -110,18 +177,7 @@ class PrivacyScreen extends StatelessWidget {
                     },
                   ),
                   const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.pin_outlined),
-                    title: const Text('PIN-код'),
-                    subtitle: const Text('Установить/изменить PIN'),
-                    onTap: () async {
-                      await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const _PinSetupScreen(),
-                        ),
-                      );
-                    },
-                  ),
+                  pinStatus,
                   const Divider(height: 1),
                   SwitchListTile(
                     secondary: const Icon(Icons.screenshot_monitor_outlined),
@@ -199,14 +255,18 @@ class PrivacyScreen extends StatelessWidget {
   }
 }
 
-class _PinSetupScreen extends StatefulWidget {
-  const _PinSetupScreen();
+enum _PinFlowKind { create, change }
+
+class _PinFlowScreen extends StatefulWidget {
+  const _PinFlowScreen({required this.kind});
+  final _PinFlowKind kind;
 
   @override
-  State<_PinSetupScreen> createState() => _PinSetupScreenState();
+  State<_PinFlowScreen> createState() => _PinFlowScreenState();
 }
 
-class _PinSetupScreenState extends State<_PinSetupScreen> {
+class _PinFlowScreenState extends State<_PinFlowScreen> {
+  final _old = TextEditingController();
   final _pin1 = TextEditingController();
   final _pin2 = TextEditingController();
   String? _error;
@@ -214,15 +274,24 @@ class _PinSetupScreenState extends State<_PinSetupScreen> {
 
   @override
   void dispose() {
+    _old.dispose();
     _pin1.dispose();
     _pin2.dispose();
     super.dispose();
   }
 
-  Future<void> _save() async {
+  Future<void> _submit() async {
     final appState = AppStateScope.of(context);
+    final oldPin = _old.text.trim();
     final a = _pin1.text.trim();
     final b = _pin2.text.trim();
+
+    if (widget.kind == _PinFlowKind.change) {
+      if (oldPin.length < 4) {
+        setState(() => _error = 'Введите старый PIN');
+        return;
+      }
+    }
     if (a.length < 4 || b.length < 4) {
       setState(() => _error = 'PIN должен быть минимум 4 цифры');
       return;
@@ -231,24 +300,53 @@ class _PinSetupScreenState extends State<_PinSetupScreen> {
       setState(() => _error = 'PIN не совпадает');
       return;
     }
+
     setState(() {
       _busy = true;
       _error = null;
     });
+
+    if (widget.kind == _PinFlowKind.change) {
+      final ok = await appState.verifyAppPin(oldPin);
+      if (!mounted) return;
+      if (!ok) {
+        setState(() {
+          _busy = false;
+          _error = 'Старый PIN неверный';
+        });
+        return;
+      }
+    }
+
     await appState.setAppPin(a);
     if (!mounted) return;
     setState(() => _busy = false);
-    Navigator.of(context).pop();
+    Navigator.of(context).pop(true);
   }
 
   @override
   Widget build(BuildContext context) {
+    final title =
+        widget.kind == _PinFlowKind.create ? 'Создать PIN-код' : 'Новый PIN-код';
     return SafeArea(
       child: Scaffold(
-        appBar: AppBar(title: const Text('PIN-код')),
+        appBar: AppBar(title: Text(title)),
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (widget.kind == _PinFlowKind.change) ...[
+              TextField(
+                controller: _old,
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Старый PIN',
+                  border: const OutlineInputBorder(),
+                  errorText: _error,
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             TextField(
               controller: _pin1,
               keyboardType: TextInputType.number,
@@ -256,7 +354,7 @@ class _PinSetupScreenState extends State<_PinSetupScreen> {
               decoration: InputDecoration(
                 labelText: 'Новый PIN',
                 border: const OutlineInputBorder(),
-                errorText: _error,
+                errorText: widget.kind == _PinFlowKind.create ? _error : null,
               ),
             ),
             const SizedBox(height: 12),
@@ -264,15 +362,18 @@ class _PinSetupScreenState extends State<_PinSetupScreen> {
               controller: _pin2,
               keyboardType: TextInputType.number,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Повторите PIN',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: 'Повторите новый PIN',
+                border: const OutlineInputBorder(),
+                errorText: widget.kind == _PinFlowKind.create ? null : _error,
               ),
             ),
             const SizedBox(height: 12),
             FilledButton(
-              onPressed: _busy ? null : _save,
-              child: const Text('Сохранить PIN'),
+              onPressed: _busy ? null : _submit,
+              child: Text(widget.kind == _PinFlowKind.create
+                  ? 'Установить PIN'
+                  : 'Установить новый PIN'),
             ),
           ],
         ),
