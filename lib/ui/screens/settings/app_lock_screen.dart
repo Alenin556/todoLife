@@ -15,7 +15,6 @@ class _AppLockScreenState extends State<AppLockScreen> {
   bool _busy = false;
   String? _error;
   bool? _hasPin;
-  bool? _deviceAuthAvailable;
 
   @override
   void dispose() {
@@ -24,13 +23,11 @@ class _AppLockScreenState extends State<AppLockScreen> {
   }
 
   Future<void> _init(AppState appState) async {
-    if (_hasPin != null && _deviceAuthAvailable != null) return;
+    if (_hasPin != null) return;
     final hasPin = await appState.appLockHasPin();
-    final dev = await appState.deviceAuthAvailable();
     if (!mounted) return;
     setState(() {
       _hasPin = hasPin;
-      _deviceAuthAvailable = dev;
     });
   }
 
@@ -49,29 +46,13 @@ class _AppLockScreenState extends State<AppLockScreen> {
     setState(() => _busy = false);
   }
 
-  Future<void> _unlockWithDevice(AppState appState) async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    final ok = await appState.authenticateWithDevice();
-    if (!mounted) return;
-    if (ok) {
-      appState.unlock();
-    } else {
-      setState(() => _error = 'Не удалось подтвердить');
-    }
-    setState(() => _busy = false);
-  }
-
   @override
   Widget build(BuildContext context) {
     final appState = AppStateScope.of(context);
     _init(appState);
 
-    final initializing = _hasPin == null || _deviceAuthAvailable == null;
+    final initializing = _hasPin == null;
     final hasPin = _hasPin ?? false;
-    final dev = _deviceAuthAvailable ?? false;
 
     return Scaffold(
       body: SafeArea(
@@ -104,6 +85,28 @@ class _AppLockScreenState extends State<AppLockScreen> {
                           padding: EdgeInsets.symmetric(vertical: 8),
                           child: Center(child: CircularProgressIndicator()),
                         ),
+                      if (!initializing && !hasPin)
+                        Column(
+                          children: [
+                            Text(
+                              'PIN-код не установлен.\nВы можете установить его позже в настройках.',
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 12),
+                            FilledButton(
+                              onPressed: _busy
+                                  ? null
+                                  : () async {
+                                      // Disable lock for now.
+                                      await appState.updateLockSettings(
+                                        appState.lockSettings.copyWith(enabled: false),
+                                      );
+                                      appState.unlock();
+                                    },
+                              child: const Text('Позже'),
+                            ),
+                          ],
+                        ),
                       if (hasPin)
                         TextField(
                           controller: _pin,
@@ -120,19 +123,6 @@ class _AppLockScreenState extends State<AppLockScreen> {
                         FilledButton(
                           onPressed: _busy ? null : () => _unlockWithPin(appState),
                           child: const Text('Разблокировать'),
-                        ),
-                      if (dev) ...[
-                        if (hasPin) const SizedBox(height: 8),
-                        OutlinedButton(
-                          onPressed: _busy ? null : () => _unlockWithDevice(appState),
-                          child: const Text('Использовать биометрию/пароль устройства'),
-                        ),
-                      ],
-                      if (!hasPin && !dev)
-                        Text(
-                          'На этом устройстве недоступна биометрия/пароль.\n'
-                          'В настройках выключите блокировку приложения.',
-                          textAlign: TextAlign.center,
                         ),
                     ],
                   ),

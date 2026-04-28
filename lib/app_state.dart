@@ -89,13 +89,8 @@ class AppState extends ChangeNotifier {
         ? const Locale('en', 'US')
         : const Locale('ru', 'RU');
     _lockSettings = _appLock.loadSettings();
-    // Don't lock if user hasn't set PIN and device auth isn't available.
-    if (_lockSettings.enabled) {
-      final canLock = await appLockHasPin() || await deviceAuthAvailable();
-      _locked = canLock;
-    } else {
-      _locked = false;
-    }
+    // Lock requires PIN. If no PIN is set, keep app unlocked even if enabled.
+    _locked = _lockSettings.enabled && await appLockHasPin();
     _dailyTasks = await _storage.loadTasks(TaskKind.daily);
     _longTasks = await _storage.loadTasks(TaskKind.long);
     _calendarEvents = await _storage.loadCalendarEvents();
@@ -131,9 +126,8 @@ class AppState extends ChangeNotifier {
       _locked = false;
       _lastBackgroundAt = null;
     } else if (!wasEnabled && s.enabled) {
-      // Newly enabled: lock only if there is a way to unlock.
-      final canLock = await appLockHasPin() || await deviceAuthAvailable();
-      _locked = canLock;
+      // Newly enabled: lock only if PIN exists.
+      _locked = await appLockHasPin();
       _lastBackgroundAt = null;
     }
     notifyListeners();
@@ -143,15 +137,20 @@ class AppState extends ChangeNotifier {
   Future<void> setAppPin(String pin) => _appLock.setPin(pin);
   Future<void> clearAppPin() => _appLock.clearPin();
   Future<bool> verifyAppPin(String pin) => _appLock.verifyPin(pin);
-  Future<bool> authenticateWithDevice() => _appLock.authenticateWithDevice();
-  Future<bool> deviceAuthAvailable() => _appLock.deviceAuthAvailable();
 
   void onAppBackgrounded() {
     if (!_lockSettings.enabled) return;
     _lastBackgroundAt = DateTime.now();
     if (_lockSettings.autoLockSeconds == 0) {
-      _locked = true;
-      notifyListeners();
+      // Only lock if PIN exists.
+      // If user enabled lock without setting PIN, do not brick the app.
+      // (They can set PIN later in settings.)
+      // ignore: discarded_futures
+      appLockHasPin().then((hasPin) {
+        if (!hasPin) return;
+        _locked = true;
+        notifyListeners();
+      });
     }
   }
 

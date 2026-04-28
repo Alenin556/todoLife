@@ -1,8 +1,6 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
-import 'package:flutter/foundation.dart';
-import 'package:local_auth/local_auth.dart';
 
 import 'user_storage.dart';
 
@@ -32,11 +30,9 @@ class AppLockSettings {
 }
 
 class AppLockService {
-  AppLockService(this._storage, {LocalAuthentication? auth})
-      : _auth = auth ?? LocalAuthentication();
+  AppLockService(this._storage);
 
   final UserStorage _storage;
-  final LocalAuthentication _auth;
 
   AppLockSettings loadSettings() {
     return AppLockSettings(
@@ -50,32 +46,6 @@ class AppLockService {
     await _storage.savePrivacyLockEnabled(s.enabled);
     await _storage.savePrivacyAutoLockSeconds(s.autoLockSeconds);
     await _storage.savePrivacyPreventScreenshots(s.preventScreenshots);
-  }
-
-  Future<bool> deviceAuthAvailable() async {
-    try {
-      final can = await _auth.canCheckBiometrics;
-      final supported = await _auth.isDeviceSupported();
-      return can || supported;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  Future<bool> authenticateWithDevice({
-    String reason = 'Разблокировать приложение',
-  }) async {
-    try {
-      return await _auth.authenticate(
-        localizedReason: reason,
-        options: const AuthenticationOptions(
-          biometricOnly: false,
-          stickyAuth: true,
-        ),
-      );
-    } catch (_) {
-      return false;
-    }
   }
 
   static String hashPin(String pin) {

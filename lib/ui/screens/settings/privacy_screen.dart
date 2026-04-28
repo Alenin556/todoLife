@@ -152,9 +152,29 @@ class PrivacyScreen extends StatelessWidget {
                   SwitchListTile(
                     secondary: const Icon(Icons.lock_outline),
                     title: const Text('Блокировка приложения'),
-                    subtitle: const Text('PIN/биометрия при возврате в приложение'),
+                    subtitle: const Text('PIN при возврате в приложение'),
                     value: lock.enabled,
                     onChanged: (v) async {
+                      if (v) {
+                        final hasPin = await appState.appLockHasPin();
+                        if (!context.mounted) return;
+                        if (!hasPin) {
+                          final ok = await Navigator.of(context).push<bool>(
+                            MaterialPageRoute(
+                              builder: (_) => AppStateScope(
+                                notifier: appState,
+                                child: _PinFlowScreen(kind: _PinFlowKind.create),
+                              ),
+                            ),
+                          );
+                          if (ok == true) {
+                            await appState.updateLockSettings(lock.copyWith(enabled: true));
+                          } else {
+                            await appState.updateLockSettings(lock.copyWith(enabled: false));
+                          }
+                          return;
+                        }
+                      }
                       await appState.updateLockSettings(lock.copyWith(enabled: v));
                     },
                   ),
